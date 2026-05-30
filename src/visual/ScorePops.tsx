@@ -1,4 +1,4 @@
-import { PAL } from '../game/constants';
+import { PALETTE } from '../game/constants';
 import type { World } from '../game/types';
 
 interface Props {
@@ -8,18 +8,18 @@ interface Props {
 export function ScorePops({ world }: Props) {
   return (
     <g style={{ font: '800 18px JetBrains Mono, ui-monospace, monospace' }}>
-      {world.scorePops.map((p, i) => (
+      {world.scorePops.map((scorePop, i) => (
         <text
           key={i}
-          x={p.x}
-          y={p.y}
-          opacity={p.life}
-          fill={PAL.yellow}
-          stroke={PAL.ink}
+          x={scorePop.x}
+          y={scorePop.y}
+          opacity={scorePop.life}
+          fill={PALETTE.yellow}
+          stroke={PALETTE.ink}
           strokeWidth={3}
           paintOrder="stroke"
         >
-          {p.txt}
+          {scorePop.text}
         </text>
       ))}
     </g>

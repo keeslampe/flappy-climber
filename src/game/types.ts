@@ -3,14 +3,14 @@ export type GameState = 'idle' | 'playing';
 export interface Climber {
   x: number;
   y: number;
-  w: number;
-  h: number;
-  animT: number;
+  width: number;
+  height: number;
+  animationTime: number;
 }
 
 export interface Boulder {
-  ox: number;
-  r: number;
+  offsetX: number;
+  radius: number;
   squish: number;
   seed: number;
 }
@@ -20,23 +20,23 @@ export type Obstacle =
       kind: 'boulder';
       x: number;
       boulders: Boulder[];
-      totalW: number;
+      totalWidth: number;
       seed: number;
       scored: boolean;
     }
   | {
       kind: 'wall';
       x: number;
-      wallW: number;
-      wallH: number;
+      wallWidth: number;
+      wallHeight: number;
       seed: number;
       scored: boolean;
     }
   | {
       kind: 'interval';
       x: number;
-      wallW: number;
-      wallH: number;
+      wallWidth: number;
+      wallHeight: number;
       seed: number;
       scored: boolean;
     };
@@ -44,11 +44,11 @@ export type Obstacle =
 export interface Particle {
   x: number;
   y: number;
-  vx: number;
-  vy: number;
+  velocityX: number;
+  velocityY: number;
   life: number;
   decay: number;
-  r: number;
+  radius: number;
   color: string;
 }
 
@@ -56,14 +56,14 @@ export interface ScorePop {
   x: number;
   y: number;
   life: number;
-  vy: number;
-  txt: string;
+  velocityY: number;
+  text: string;
 }
 
 export interface Cloud {
   x: number;
   y: number;
-  w: number;
+  width: number;
   speed: number;
 }
 
@@ -78,9 +78,9 @@ export interface World {
   seconds: number;
   gameStartTime: number;
   weight: number;
-  frameN: number;
-  bgScrollY: number;
-  groundOff: number;
+  frameNumber: number;
+  backgroundScrollY: number;
+  groundOffset: number;
   flashTimer: number;
   hitCooldown: number;
 
@@ -92,18 +92,18 @@ export interface World {
   clouds: Cloud[];
 
   // sequence engine
-  seqProgram: SeqEvent[];
-  seqRepeatMax: number;
-  seqIndex: number;
-  seqRepeatCount: number;
-  seqEventStartSec: number;
-  seqEventSpawned: boolean;
-  seqTargetH: number;
-  beamDisplayH: number;
+  sequenceProgram: SeqEvent[];
+  sequenceRepeatMax: number;
+  sequenceIndex: number;
+  sequenceRepeatCount: number;
+  sequenceEventStartSeconds: number;
+  sequenceEventSpawned: boolean;
+  sequenceTargetHeight: number;
+  beamDisplayHeight: number;
 
   // Tindeq
-  tindeqKg: number;
-  tindeqSmoothed: number;
+  tindeqKilograms: number;
+  tindeqSmoothedKilograms: number;
   tindeqMoving: boolean;
   tindeqConnected: boolean;
 

@@ -1,27 +1,27 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { W } from './game/constants';
+import { WORLD_WIDTH } from './game/constants';
 import { parseSequence } from './game/sequence';
 import { tickWorld } from './game/tick';
 import { createInitialWorld, getGroundY, resetForNewGame } from './game/world';
 
-import { Clouds } from './components/Clouds';
-import { DPad } from './components/DPad';
+import { Climber } from './components/Climber';
 import { DebugPanel } from './components/DebugPanel';
+import { DirectionalPad } from './components/DirectionalPad';
 import { Ground } from './components/Ground';
 import { GuideBeam } from './components/GuideBeam';
-import { HUD } from './components/HUD';
+import { HeadsUpDisplay } from './components/HeadsUpDisplay';
 import { HeightMeter } from './components/HeightMeter';
-import { MidgroundHills } from './components/MidgroundHills';
-import { Mountains } from './components/Mountains';
 import { Obstacles } from './components/Obstacles';
 import { Overlay } from './components/Overlay';
-import { Particles } from './components/Particles';
-import { Climber } from './components/Climber';
-import { Rope } from './components/Rope';
-import { ScorePops } from './components/ScorePops';
-import { Sky } from './components/Sky';
-import { Sun } from './components/Sun';
-import { Trees } from './components/Trees';
+import { Clouds } from './visual/Clouds';
+import { MidgroundHills } from './visual/MidgroundHills';
+import { Mountains } from './visual/Mountains';
+import { Particles } from './visual/Particles';
+import { Rope } from './visual/Rope';
+import { ScorePops } from './visual/ScorePops';
+import { Sky } from './visual/Sky';
+import { Sun } from './visual/Sun';
+import { Trees } from './visual/Trees';
 import { useGameLoop } from './hooks/useGameLoop';
 import { useKeyboard } from './hooks/useKeyboard';
 import { useTindeq } from './hooks/useTindeq';
@@ -31,24 +31,24 @@ const DEFAULT_SEQ = `8 seconds on 20 height
 repeat this 5 times`;
 
 export default function App() {
-  // Viewport-driven dimensions. The SVG renders into a logical W × logicalH
+  // Viewport-driven dimensions. The SVG renders into a logical WORLD_WIDTH × logicalHeight
   // coordinate space and stretches to fill the viewport.
   const [viewport, setViewport] = useState(() => ({
-    w: window.innerWidth,
-    h: window.innerHeight,
+    width: window.innerWidth,
+    height: window.innerHeight,
   }));
   useEffect(() => {
-    const onResize = () => setViewport({ w: window.innerWidth, h: window.innerHeight });
+    const onResize = () => setViewport({ width: window.innerWidth, height: window.innerHeight });
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
   }, []);
-  const scale = viewport.w / W;
-  const logicalH = Math.ceil(viewport.h / scale);
-  const groundY = getGroundY(logicalH);
+  const scale = viewport.width / WORLD_WIDTH;
+  const logicalHeight = Math.ceil(viewport.height / scale);
+  const groundY = getGroundY(logicalHeight);
 
   // World state lives in a ref — RAF mutates it in place. A tick counter in
   // React state forces a re-render every animation frame.
-  const worldRef = useRef(createInitialWorld(logicalH));
+  const worldRef = useRef(createInitialWorld(logicalHeight));
   const [, setTick] = useState(0);
   const tindeq = useTindeq();
   const [seqText, setSeqText] = useState(DEFAULT_SEQ);
@@ -62,13 +62,13 @@ export default function App() {
 
   const startGame = useCallback(() => {
     const world = worldRef.current;
-    resetForNewGame(world, logicalH);
+    resetForNewGame(world, logicalHeight);
     const parsed = parseSequence(seqText);
-    world.seqProgram = parsed.events;
-    world.seqRepeatMax = parsed.repeatTimes;
+    world.sequenceProgram = parsed.events;
+    world.sequenceRepeatMax = parsed.repeatTimes;
     world.status = 'playing';
     setShowOverlay(false);
-  }, [logicalH, seqText]);
+  }, [logicalHeight, seqText]);
 
   const returnToMenu = useCallback(() => {
     const world = worldRef.current;
@@ -79,8 +79,8 @@ export default function App() {
     setShowOverlay(true);
   }, [bestScore]);
 
-  const setUp = useCallback((v: boolean) => { worldRef.current.keysUp = v; }, []);
-  const setDown = useCallback((v: boolean) => { worldRef.current.keysDown = v; }, []);
+  const setUp = useCallback((value: boolean) => { worldRef.current.keysUp = value; }, []);
+  const setDown = useCallback((value: boolean) => { worldRef.current.keysDown = value; }, []);
   useKeyboard({ setUp, setDown, onEscape: returnToMenu });
 
   // Expose for debugging in dev only
@@ -93,16 +93,16 @@ export default function App() {
     const world = worldRef.current;
     // Mirror Tindeq connection state + raw reading into world for tick logic.
     world.tindeqConnected = tindeq.connected;
-    world.tindeqKg = tindeq.readingRef.current;
+    world.tindeqKilograms = tindeq.readingRef.current;
     tickWorld(world, {
-      viewportH: logicalH,
+      viewportHeight: logicalHeight,
       onFlash: () => {
         setFlashAlpha(0.55);
         if (flashTimeoutRef.current) window.clearTimeout(flashTimeoutRef.current);
         flashTimeoutRef.current = window.setTimeout(() => setFlashAlpha(0), 120);
       },
     });
-    setTick((t) => (t + 1) | 0);
+    setTick((tick) => (tick + 1) | 0);
   });
 
   const world = worldRef.current;
@@ -111,17 +111,17 @@ export default function App() {
     <div className="playfield">
       <svg
         className="world"
-        viewBox={`0 0 ${W} ${logicalH}`}
+        viewBox={`0 0 ${WORLD_WIDTH} ${logicalHeight}`}
         preserveAspectRatio="none"
       >
-        <Sky W={W} groundY={groundY} />
-        <Sun W={W} />
+        <Sky worldWidth={WORLD_WIDTH} groundY={groundY} />
+        <Sun worldWidth={WORLD_WIDTH} />
         <Clouds clouds={world.clouds} />
-        <Mountains W={W} groundY={groundY} bgScrollY={world.bgScrollY} />
-        <MidgroundHills W={W} groundY={groundY} bgScrollY={world.bgScrollY} />
-        <Trees layer={0} W={W} groundY={groundY} bgScrollY={world.bgScrollY} />
-        <Trees layer={1} W={W} groundY={groundY} bgScrollY={world.bgScrollY} />
-        <Ground W={W} groundY={groundY} viewportH={logicalH} groundOff={world.groundOff} />
+        <Mountains worldWidth={WORLD_WIDTH} groundY={groundY} backgroundScrollY={world.backgroundScrollY} />
+        <MidgroundHills worldWidth={WORLD_WIDTH} groundY={groundY} backgroundScrollY={world.backgroundScrollY} />
+        <Trees layer={0} worldWidth={WORLD_WIDTH} groundY={groundY} backgroundScrollY={world.backgroundScrollY} />
+        <Trees layer={1} worldWidth={WORLD_WIDTH} groundY={groundY} backgroundScrollY={world.backgroundScrollY} />
+        <Ground worldWidth={WORLD_WIDTH} groundY={groundY} viewportHeight={logicalHeight} groundOffset={world.groundOffset} />
         <Obstacles world={world} groundY={groundY} />
         {showBeam && <GuideBeam world={world} groundY={groundY} />}
         <Rope world={world} />
@@ -131,21 +131,21 @@ export default function App() {
         <HeightMeter world={world} groundY={groundY} />
       </svg>
 
-      <HUD seconds={world.seconds} score={world.score} weight={world.weight} />
+      <HeadsUpDisplay seconds={world.seconds} score={world.score} weight={world.weight} />
 
       <div className="flash" style={{ background: `rgba(255,61,138,${flashAlpha})` }} />
 
       {showDebug && (
         <DebugPanel
           raw={tindeq.readingRef.current}
-          smooth={world.tindeqSmoothed}
+          smooth={world.tindeqSmoothedKilograms}
           connected={tindeq.connected}
         />
       )}
 
-      <DPad
-        onUpChange={(v) => { worldRef.current.keysUp = v; }}
-        onDownChange={(v) => { worldRef.current.keysDown = v; }}
+      <DirectionalPad
+        onUpChange={(value) => { worldRef.current.keysUp = value; }}
+        onDownChange={(value) => { worldRef.current.keysDown = value; }}
         onMenu={returnToMenu}
       />
 
@@ -169,4 +169,3 @@ export default function App() {
     </div>
   );
 }
-

@@ -3,34 +3,39 @@ import type { World } from './types';
 // Returns true if the climber has hit something. Caller handles cooldown.
 export function checkCollision(world: World, groundY: number): boolean {
   const { climber, obstacles } = world;
-  const hw = climber.w / 2 - 5;
-  const hh = climber.h / 2 - 8;
-  const cx = climber.x;
-  const cy = climber.y;
+  const halfWidth = climber.width / 2 - 5;
+  const halfHeight = climber.height / 2 - 8;
+  const centerX = climber.x;
+  const centerY = climber.y;
 
   // Ground
-  if (cy + hh >= groundY) {
-    climber.y = groundY - hh;
+  if (centerY + halfHeight >= groundY) {
+    climber.y = groundY - halfHeight;
     return true;
   }
 
-  for (const obs of obstacles) {
-    if (obs.kind === 'boulder') {
-      for (const b of obs.boulders) {
-        const bx = obs.x + b.ox;
-        const by = groundY - b.r * b.squish;
-        const dx = cx - bx;
-        const dy = cy - by;
-        const rx2 = b.r + hw;
-        const ry2 = b.r * b.squish + hh;
-        if ((dx * dx) / (rx2 * rx2) + (dy * dy) / (ry2 * ry2) < 1) return true;
+  for (const obstacle of obstacles) {
+    if (obstacle.kind === 'boulder') {
+      for (const boulder of obstacle.boulders) {
+        const boulderX = obstacle.x + boulder.offsetX;
+        const boulderY = groundY - boulder.radius * boulder.squish;
+        const deltaX = centerX - boulderX;
+        const deltaY = centerY - boulderY;
+        const combinedRadiusX = boulder.radius + halfWidth;
+        const combinedRadiusY = boulder.radius * boulder.squish + halfHeight;
+        if (
+          (deltaX * deltaX) / (combinedRadiusX * combinedRadiusX) +
+            (deltaY * deltaY) / (combinedRadiusY * combinedRadiusY) <
+          1
+        )
+          return true;
       }
     } else {
       if (
-        cx + hw > obs.x + 3 &&
-        cx - hw < obs.x + obs.wallW - 3 &&
-        cy + hh > groundY - obs.wallH &&
-        cy - hh < groundY
+        centerX + halfWidth > obstacle.x + 3 &&
+        centerX - halfWidth < obstacle.x + obstacle.wallWidth - 3 &&
+        centerY + halfHeight > groundY - obstacle.wallHeight &&
+        centerY - halfHeight < groundY
       ) {
         return true;
       }

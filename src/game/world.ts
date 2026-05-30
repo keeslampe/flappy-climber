@@ -1,20 +1,25 @@
-import { GROUND_OFFSET_FROM_BOTTOM, W } from './constants';
-import { rng } from './rng';
+import { GROUND_OFFSET_FROM_BOTTOM, WORLD_WIDTH } from './constants';
+import { createRandom } from './randomNumberGenerator';
 import type { Cloud, World } from './types';
 
 function makeClouds(): Cloud[] {
   return Array.from({ length: 5 }, (_, i) => {
-    const r2 = rng(i * 41 + 3);
-    return { x: r2() * W, y: 36 + r2() * 120, w: 70 + r2() * 60, speed: 0.18 + r2() * 0.18 };
+    const random = createRandom(i * 41 + 3);
+    return {
+      x: random() * WORLD_WIDTH,
+      y: 36 + random() * 120,
+      width: 70 + random() * 60,
+      speed: 0.18 + random() * 0.18,
+    };
   });
 }
 
-export function getGroundY(viewportH: number): number {
-  return viewportH - GROUND_OFFSET_FROM_BOTTOM;
+export function getGroundY(viewportHeight: number): number {
+  return viewportHeight - GROUND_OFFSET_FROM_BOTTOM;
 }
 
-export function createInitialWorld(viewportH: number): World {
-  const GROUND_Y = getGroundY(viewportH);
+export function createInitialWorld(viewportHeight: number): World {
+  const groundY = getGroundY(viewportHeight);
   return {
     status: 'idle',
     score: 0,
@@ -22,30 +27,30 @@ export function createInitialWorld(viewportH: number): World {
     seconds: 0,
     gameStartTime: 0,
     weight: 0,
-    frameN: 0,
-    bgScrollY: 0,
-    groundOff: 0,
+    frameNumber: 0,
+    backgroundScrollY: 0,
+    groundOffset: 0,
     flashTimer: 0,
     hitCooldown: 0,
 
-    climber: { x: 90, y: GROUND_Y - 20, w: 30, h: 44, animT: 0 },
+    climber: { x: 90, y: groundY - 20, width: 30, height: 44, animationTime: 0 },
     obstacles: [],
     ropePoints: [],
     particles: [],
     scorePops: [],
     clouds: makeClouds(),
 
-    seqProgram: [],
-    seqRepeatMax: 1,
-    seqIndex: 0,
-    seqRepeatCount: 0,
-    seqEventStartSec: 0,
-    seqEventSpawned: false,
-    seqTargetH: 0,
-    beamDisplayH: 0,
+    sequenceProgram: [],
+    sequenceRepeatMax: 1,
+    sequenceIndex: 0,
+    sequenceRepeatCount: 0,
+    sequenceEventStartSeconds: 0,
+    sequenceEventSpawned: false,
+    sequenceTargetHeight: 0,
+    beamDisplayHeight: 0,
 
-    tindeqKg: 0,
-    tindeqSmoothed: 0,
+    tindeqKilograms: 0,
+    tindeqSmoothedKilograms: 0,
     tindeqMoving: false,
     tindeqConnected: false,
 
@@ -54,11 +59,11 @@ export function createInitialWorld(viewportH: number): World {
   };
 }
 
-export function resetForNewGame(world: World, viewportH: number): void {
-  const GROUND_Y = getGroundY(viewportH);
+export function resetForNewGame(world: World, viewportHeight: number): void {
+  const groundY = getGroundY(viewportHeight);
   world.climber.x = 90;
-  world.climber.y = GROUND_Y - 20;
-  world.climber.animT = 0;
+  world.climber.y = groundY - 20;
+  world.climber.animationTime = 0;
   world.obstacles.length = 0;
   world.ropePoints.length = 0;
   world.particles.length = 0;
@@ -67,16 +72,16 @@ export function resetForNewGame(world: World, viewportH: number): void {
   world.seconds = 0;
   world.gameStartTime = performance.now();
   world.weight = 0;
-  world.frameN = 0;
-  world.bgScrollY = 0;
-  world.groundOff = 0;
+  world.frameNumber = 0;
+  world.backgroundScrollY = 0;
+  world.groundOffset = 0;
   world.hitCooldown = 0;
-  world.seqIndex = 0;
-  world.seqRepeatCount = 0;
-  world.seqEventStartSec = 0;
-  world.seqEventSpawned = false;
-  world.seqTargetH = 0;
-  world.beamDisplayH = 0;
-  world.tindeqSmoothed = 0;
+  world.sequenceIndex = 0;
+  world.sequenceRepeatCount = 0;
+  world.sequenceEventStartSeconds = 0;
+  world.sequenceEventSpawned = false;
+  world.sequenceTargetHeight = 0;
+  world.beamDisplayHeight = 0;
+  world.tindeqSmoothedKilograms = 0;
   world.tindeqMoving = false;
 }

@@ -1,9 +1,9 @@
-import { PAL } from '../game/constants';
+import { PALETTE } from '../game/constants';
 
 interface Props {
-  W: number;
+  worldWidth: number;
   groundY: number;
-  bgScrollY: number;
+  backgroundScrollY: number;
 }
 
 // Source: env-sky.jsx, scaled to canvas width.
@@ -22,28 +22,28 @@ const MID_RIDGE: [number, number][] = [
   [245, 64], [290, 102], [330, 80], [365, 100], [400, 76],
 ];
 
-export function Mountains({ W, groundY, bgScrollY }: Props) {
+export function Mountains({ worldWidth, groundY, backgroundScrollY }: Props) {
   return (
     <>
       <Ridge
         points={FAR_RIDGE}
         baseline={groundY - 240}
-        viewH={140}
+        viewHeight={140}
         fill="#9DB4C9"
-        strokeW={2.2}
-        scroll={bgScrollY * 0.05}
+        strokeWidth={2.2}
+        scroll={backgroundScrollY * 0.05}
         snowcaps={FAR_SNOWCAPS}
-        W={W}
+        worldWidth={worldWidth}
       />
       <Ridge
         points={MID_RIDGE}
         baseline={groundY - 180}
-        viewH={140}
+        viewHeight={140}
         fill="#5F7E94"
-        strokeW={2.6}
-        scroll={bgScrollY * 0.10}
+        strokeWidth={2.6}
+        scroll={backgroundScrollY * 0.10}
         snowcaps={null}
-        W={W}
+        worldWidth={worldWidth}
       />
     </>
   );
@@ -52,50 +52,52 @@ export function Mountains({ W, groundY, bgScrollY }: Props) {
 interface RidgeProps {
   points: [number, number][];
   baseline: number;
-  viewH: number;
+  viewHeight: number;
   fill: string;
-  strokeW: number;
+  strokeWidth: number;
   scroll: number;
   snowcaps: number[][] | null;
-  W: number;
+  worldWidth: number;
 }
 
 // Outlined mountain ridge that wraps horizontally for parallax. `points` are
 // in a 0..400 local space; scaled to the canvas and tiled twice to wrap.
-function Ridge({ points, baseline, viewH, fill, strokeW, scroll, snowcaps, W }: RidgeProps) {
-  const segW = W;
-  const offset = ((scroll % segW) + segW) % segW;
+function Ridge({ points, baseline, viewHeight, fill, strokeWidth, scroll, snowcaps, worldWidth }: RidgeProps) {
+  const segmentWidth = worldWidth;
+  const offset = ((scroll % segmentWidth) + segmentWidth) % segmentWidth;
   const tiles: number[] = [-1, 0, 1];
   return (
     <g strokeLinejoin="round" strokeLinecap="round">
       {tiles.map((tile) => {
-        const x0 = tile * segW - offset;
+        const x0 = tile * segmentWidth - offset;
         const fillPath =
           `M ${x0} ${baseline} ` +
           points
-            .map(([px, py]) => `L ${x0 + (px / 400) * segW} ${baseline - (viewH - py)}`)
+            .map(([localX, localY]) => `L ${x0 + (localX / 400) * segmentWidth} ${baseline - (viewHeight - localY)}`)
             .join(' ') +
-          ` L ${x0 + segW} ${baseline} Z`;
+          ` L ${x0 + segmentWidth} ${baseline} Z`;
         const strokePath = points
-          .map(([px, py], i) => {
-            const x = x0 + (px / 400) * segW;
-            const y = baseline - (viewH - py);
-            return `${i === 0 ? 'M' : 'L'} ${x} ${y}`;
+          .map(([localX, localY], i) => {
+            const pointX = x0 + (localX / 400) * segmentWidth;
+            const pointY = baseline - (viewHeight - localY);
+            return `${i === 0 ? 'M' : 'L'} ${pointX} ${pointY}`;
           })
           .join(' ');
         return (
           <g key={tile}>
             <path d={fillPath} fill={fill} />
-            <path d={strokePath} fill="none" stroke={PAL.ink} strokeWidth={strokeW} />
+            <path d={strokePath} fill="none" stroke={PALETTE.ink} strokeWidth={strokeWidth} />
             {snowcaps?.map((pts, i) => {
-              const d = pts
+              const pathData = pts
                 .reduce<string>((acc, _, idx) => {
                   if (idx % 2 !== 0) return acc;
-                  const sx = x0 + (pts[idx] / 400) * segW;
-                  const sy = baseline - (viewH - pts[idx + 1]);
-                  return acc + `${idx === 0 ? 'M' : 'L'} ${sx} ${sy} `;
+                  const snowX = x0 + (pts[idx] / 400) * segmentWidth;
+                  const snowY = baseline - (viewHeight - pts[idx + 1]);
+                  return acc + `${idx === 0 ? 'M' : 'L'} ${snowX} ${snowY} `;
                 }, '') + 'Z';
-              return <path key={i} d={d} fill="#F0F5FB" stroke={PAL.ink} strokeWidth={strokeW * 0.9} />;
+              return (
+                <path key={i} d={pathData} fill="#F0F5FB" stroke={PALETTE.ink} strokeWidth={strokeWidth * 0.9} />
+              );
             })}
           </g>
         );

@@ -4,10 +4,10 @@ interface Props {
   weight: number;
 }
 
-export function HUD({ seconds, score, weight }: Props) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  const timeStr = `${m}:${s < 10 ? '0' : ''}${s}`;
+export function HeadsUpDisplay({ seconds, score, weight }: Props) {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  const timeStr = `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
   return (
     <div className="hud">
       <div className="hud-box time">

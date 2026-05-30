@@ -6,7 +6,7 @@ interface Props {
   onMenu: () => void;
 }
 
-export function DPad({ onUpChange, onDownChange, onMenu }: Props) {
+export function DirectionalPad({ onUpChange, onDownChange, onMenu }: Props) {
   return (
     <div className="dpad">
       <HoldButton label="▲" onChange={onUpChange} />

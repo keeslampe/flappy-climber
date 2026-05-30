@@ -1,12 +1,12 @@
-import { PAL } from '../game/constants';
+import { PALETTE } from '../game/constants';
 
 interface Props {
   groundY: number;
-  W: number;
+  worldWidth: number;
 }
 
 // Dusk gradient — warm peach to pale cream near the horizon.
-export function Sky({ groundY, W }: Props) {
+export function Sky({ groundY, worldWidth }: Props) {
   return (
     <>
       <defs>
@@ -16,8 +16,8 @@ export function Sky({ groundY, W }: Props) {
           <stop offset="100%" stopColor="#FFE9BF" />
         </linearGradient>
       </defs>
-      <rect x={0} y={0} width={W} height={groundY} fill="url(#skyGradient)" />
-      <rect x={0} y={groundY} width={W} height={2} fill={PAL.ink} opacity={0} />
+      <rect x={0} y={0} width={worldWidth} height={groundY} fill="url(#skyGradient)" />
+      <rect x={0} y={groundY} width={worldWidth} height={2} fill={PALETTE.ink} opacity={0} />
     </>
   );
 }

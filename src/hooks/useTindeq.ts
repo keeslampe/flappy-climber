@@ -1,11 +1,11 @@
 import { useCallback, useRef, useState } from 'react';
 import {
-  CMD_START_WEIGHT_MEAS,
-  CMD_TARE_SCALE,
-  CTRL_POINT_UUID,
-  DATA_CHAR_UUID,
+  COMMAND_START_WEIGHT_MEASUREMENT,
+  COMMAND_TARE_SCALE,
+  CONTROL_POINT_UUID,
+  DATA_CHARACTERISTIC_UUID,
   PROGRESSOR_SERVICE,
-  RES_WEIGHT_MEAS,
+  RESPONSE_WEIGHT_MEASUREMENT,
 } from '../game/constants';
 
 interface UseTindeq {
@@ -19,12 +19,12 @@ interface UseTindeq {
 export function useTindeq(): UseTindeq {
   const [connected, setConnected] = useState(false);
   const readingRef = useRef(0);
-  const ctrlCharRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
+  const controlCharRef = useRef<BluetoothRemoteGATTCharacteristic | null>(null);
 
   const handleData = useCallback((event: Event) => {
     const target = event.target as BluetoothRemoteGATTCharacteristic;
     const data = target.value!;
-    if (data.getUint8(0) === RES_WEIGHT_MEAS) {
+    if (data.getUint8(0) === RESPONSE_WEIGHT_MEASUREMENT) {
       // Each measurement is 8 bytes: float32 weight + uint32 timestamp (LE)
       for (let i = 2; i + 4 <= data.byteLength; i += 8) {
         readingRef.current = Math.max(0, data.getFloat32(i, true));
@@ -41,16 +41,16 @@ export function useTindeq(): UseTindeq {
     if (!device.gatt) throw new Error('No GATT');
     const server = await device.gatt.connect();
     const service = await server.getPrimaryService(PROGRESSOR_SERVICE);
-    const dataChar = await service.getCharacteristic(DATA_CHAR_UUID);
-    const ctrlChar = await service.getCharacteristic(CTRL_POINT_UUID);
-    ctrlCharRef.current = ctrlChar;
+    const dataCharacteristic = await service.getCharacteristic(DATA_CHARACTERISTIC_UUID);
+    const controlChar = await service.getCharacteristic(CONTROL_POINT_UUID);
+    controlCharRef.current = controlChar;
 
-    await dataChar.startNotifications();
-    dataChar.addEventListener('characteristicvaluechanged', handleData);
+    await dataCharacteristic.startNotifications();
+    dataCharacteristic.addEventListener('characteristicvaluechanged', handleData);
 
-    await ctrlChar.writeValue(new Uint8Array([CMD_TARE_SCALE]));
-    await new Promise((r) => setTimeout(r, 300));
-    await ctrlChar.writeValue(new Uint8Array([CMD_START_WEIGHT_MEAS]));
+    await controlChar.writeValue(new Uint8Array([COMMAND_TARE_SCALE]));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await controlChar.writeValue(new Uint8Array([COMMAND_START_WEIGHT_MEASUREMENT]));
 
     setConnected(true);
     device.addEventListener('gattserverdisconnected', () => {

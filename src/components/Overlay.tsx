@@ -98,14 +98,14 @@ export function Overlay(props: Props) {
       <div className="hint">
         Hold ↑ / ↓ to climb · or use Tindeq
         <br />
-        dodge the boulders & walls
+        dodge the boulders &amp; walls
       </div>
     </div>
   );
 }
 
-function formatTime(seconds: number): string {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
+function formatTime(totalSeconds: number): string {
+  const minutes = Math.floor(totalSeconds / 60);
+  const remainingSeconds = totalSeconds % 60;
+  return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
 }

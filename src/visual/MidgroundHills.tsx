@@ -1,30 +1,30 @@
 import { useMemo } from 'react';
-import { rng } from '../game/rng';
+import { createRandom } from '../game/randomNumberGenerator';
 
 interface Props {
-  W: number;
+  worldWidth: number;
   groundY: number;
-  bgScrollY: number;
+  backgroundScrollY: number;
 }
 
 // Green rolling band sitting between the mountains and the trees. Fills the
 // area behind the trees so the warm sky doesn't peek through ridge valleys.
-export function MidgroundHills({ W, groundY, bgScrollY }: Props) {
+export function MidgroundHills({ worldWidth, groundY, backgroundScrollY }: Props) {
   const profile = useMemo(() => {
-    const r = rng(919);
-    const N = 20;
-    const points: { x: number; dy: number }[] = [];
-    for (let i = 0; i <= N; i++) {
-      const t = i / N;
-      const dy = Math.sin(t * Math.PI * 1.8) * 14 + (r() - 0.5) * 10;
-      points.push({ x: t, dy });
+    const random = createRandom(919);
+    const pointCount = 20;
+    const points: { x: number; offsetY: number }[] = [];
+    for (let i = 0; i <= pointCount; i++) {
+      const fraction = i / pointCount;
+      const offsetY = Math.sin(fraction * Math.PI * 1.8) * 14 + (random() - 0.5) * 10;
+      points.push({ x: fraction, offsetY });
     }
     return points;
   }, []);
 
   const hillTopY = groundY - 260;
-  const span = W;
-  const offset = ((bgScrollY * 0.18) % span + span) % span;
+  const span = worldWidth;
+  const offset = ((backgroundScrollY * 0.18) % span + span) % span;
   const tiles = [-1, 0, 1];
 
   return (
@@ -40,10 +40,10 @@ export function MidgroundHills({ W, groundY, bgScrollY }: Props) {
           const x0 = tile * span - offset;
           const fillPath =
             `M ${x0} ${groundY} ` +
-            profile.map((p) => `L ${x0 + p.x * span} ${hillTopY + p.dy}`).join(' ') +
+            profile.map((point) => `L ${x0 + point.x * span} ${hillTopY + point.offsetY}`).join(' ') +
             ` L ${x0 + span} ${groundY} Z`;
           const strokePath = profile
-            .map((p, i) => `${i === 0 ? 'M' : 'L'} ${x0 + p.x * span} ${hillTopY + p.dy}`)
+            .map((point, i) => `${i === 0 ? 'M' : 'L'} ${x0 + point.x * span} ${hillTopY + point.offsetY}`)
             .join(' ');
           return (
             <g key={tile}>
