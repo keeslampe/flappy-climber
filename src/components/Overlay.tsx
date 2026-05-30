@@ -39,9 +39,9 @@ export function Overlay(props: Props) {
   return (
     <div className="overlay">
       <h1>
-        FLAPPY
-        <br />
         CLIMBER
+        <br />
+        RUNNER
       </h1>
       <div className="sub">⛰ kees lampe · tindeq ⛰</div>
 
