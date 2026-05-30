@@ -1,0 +1,1934 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#FFB47A">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Flappy Climber</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%; height:100%; background:#FFB47A; overflow:hidden;
+  font-family:'JetBrains Mono', ui-monospace, 'Courier New', monospace;
+  touch-action:none; user-select:none; -webkit-user-select:none;
+  color:#1A1A1A;
+}
+canvas { display:block; margin:0 auto; }
+
+#hud {
+  position:fixed; top:0; left:50%; transform:translateX(-50%);
+  width:100%; max-width:420px;
+  display:flex; justify-content:center; align-items:flex-start; gap:12px;
+  padding:12px 16px 0;
+  pointer-events:none; z-index:5;
+}
+.hud-box {
+  background:#1A1A1A; border:3px solid #1A1A1A;
+  border-radius:8px; padding:8px 14px; min-width:96px; text-align:center;
+  box-shadow: 4px 4px 0 rgba(0,0,0,0.4);
+}
+.hud-label { font-size:10px; letter-spacing:0.18em; font-weight:700; }
+.hud-box.time .hud-label  { color:#FFD23F; }
+.hud-box.score .hud-label { color:#1FD5C8; }
+.hud-box.kg .hud-label    { color:#FF3D8A; }
+.hud-value { font-size:22px; color:#FFF6E5; font-weight:800; letter-spacing:1px; margin-top:2px; line-height:1; }
+
+#overlay {
+  position:fixed; inset:0; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  background:rgba(20,20,20,0.92); z-index:10; pointer-events:all;
+  padding:20px;
+}
+#overlay h1 {
+  font-size:clamp(38px,11vw,62px); color:#FFD23F; letter-spacing:4px;
+  text-align:center; line-height:1.05; margin-bottom:4px; font-weight:800;
+  text-shadow: 4px 4px 0 #1A1A1A, 0 0 50px rgba(255,210,63,0.4);
+}
+.sub { font-size:12px; color:#1FD5C8; letter-spacing:3px; margin-bottom:30px; text-transform:uppercase; font-weight:700; }
+#start-btn {
+  background:#FF3D8A; color:#FFF6E5; border:3px solid #1A1A1A;
+  padding:15px 46px; font-size:22px; font-weight:800; font-family:inherit;
+  letter-spacing:3px; cursor:pointer; border-radius:8px; margin-bottom:14px;
+  pointer-events:all; transition:transform 0.08s, box-shadow 0.08s;
+  box-shadow: 5px 5px 0 #1A1A1A;
+}
+#start-btn:active { transform:translate(2px,2px); box-shadow: 2px 2px 0 #1A1A1A; }
+#best-score { font-size:12px; color:#FFD23F; letter-spacing:2px; margin-top:6px; font-weight:700; }
+#last-info { font-size:17px; color:#FFF6E5; margin-bottom:8px; letter-spacing:1px; display:none; font-weight:700; }
+.hint { font-size:11px; color:#999; margin-top:18px; text-align:center; line-height:2; letter-spacing:1px; }
+
+#seq-wrap { width:100%; max-width:320px; margin-bottom:16px; pointer-events:all; }
+#seq-label { font-size:10px; color:#1FD5C8; letter-spacing:2px; text-transform:uppercase; text-align:center; margin-bottom:6px; font-weight:700; }
+#seq-input {
+  width:100%; background:#0F0F0F; color:#FFF6E5;
+  border:2px solid #1FD5C8; border-radius:6px; padding:8px 10px;
+  font-family:inherit; font-size:11px; line-height:1.75;
+  resize:vertical; outline:none; letter-spacing:0.5px;
+}
+#seq-input::placeholder { color:#555; }
+#seq-input:focus { border-color:#FFD23F; }
+
+#dpad {
+  position:fixed; right:14px; bottom:28px;
+  display:flex; flex-direction:column; gap:8px; z-index:6; pointer-events:all;
+}
+.dpad-btn {
+  width:54px; height:46px; background:#1A1A1A;
+  border:3px solid #1A1A1A; border-radius:8px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; color:#FFD23F; font-weight:800; cursor:pointer; touch-action:none;
+  box-shadow: 3px 3px 0 rgba(0,0,0,0.4); transition:transform 0.06s, box-shadow 0.06s;
+}
+.dpad-btn.pressed { transform:translate(2px,2px); box-shadow: 1px 1px 0 rgba(0,0,0,0.4); }
+
+#flash { position:fixed; inset:0; background:rgba(255,61,138,0); pointer-events:none; z-index:9;
+  transition:background 0.05s; }
+
+#tindeq-btn {
+  background:transparent; color:#FFD23F; border:2px solid #FFD23F;
+  padding:7px 22px; font-size:12px; font-family:inherit; font-weight:700;
+  letter-spacing:2px; cursor:pointer; border-radius:6px; margin-top:6px; margin-bottom:12px;
+  pointer-events:all; transition:all 0.15s;
+}
+#tindeq-btn:active { opacity:0.7; }
+#tindeq-btn.connected { color:#1FD5C8; border-color:#1FD5C8; }
+#tindeq-btn:disabled { opacity:0.3; cursor:default; }
+
+#debug-toggle-wrap, #beam-toggle-wrap {
+  display:flex; align-items:center; gap:7px; margin-top:6px;
+  font-size:11px; color:#FFD23F; letter-spacing:1px; cursor:pointer;
+  pointer-events:all; font-weight:700;
+}
+#debug-toggle-wrap input, #beam-toggle-wrap input { accent-color:#1FD5C8; width:14px; height:14px; cursor:pointer; }
+
+#debug-panel {
+  display:none;
+  position:fixed; top:72px; left:50%; transform:translateX(-50%);
+  width:100%; max-width:420px;
+  padding:4px 16px 0;
+  pointer-events:none; z-index:5;
+}
+#debug-inner {
+  background:#1A1A1A; border:2px solid #1A1A1A;
+  border-radius:6px; padding:8px 12px; font-size:11px; font-family:inherit;
+  color:#FFD23F; letter-spacing:1px; line-height:1.6; font-weight:700;
+  box-shadow:3px 3px 0 rgba(0,0,0,0.4);
+}
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<div id="hud">
+  <div class="hud-box time"><div class="hud-label">TIME</div><div class="hud-value" id="h-time">0:00</div></div>
+  <div class="hud-box score"><div class="hud-label">SCORE</div><div class="hud-value" id="h-score">0</div></div>
+  <div class="hud-box kg"><div class="hud-label">KG</div><div class="hud-value" id="h-height">0kg</div></div>
+</div>
+
+<div id="flash"></div>
+
+<div id="debug-panel">
+  <div id="debug-inner">—</div>
+</div>
+
+<div id="overlay">
+  <h1>FLAPPY<br>CLIMBER</h1>
+  <div class="sub">⛰ kees lampe · tindeq ⛰</div>
+  <div id="last-info"></div>
+  <div id="seq-wrap">
+    <div id="seq-label">Program (optional)</div>
+    <textarea id="seq-input" rows="5">8 seconds on 20 height
+10 seconds rest
+repeat this 5 times</textarea>
+  </div>
+  <button id="start-btn">▶ SEND IT!</button>
+  <div id="best-score">BEST: 0</div>
+  <button id="tindeq-btn">🔗 Connect Tindeq</button>
+  <label id="debug-toggle-wrap">
+    <input type="checkbox" id="debug-toggle"> DEBUG OVERLAY
+  </label>
+  <label id="beam-toggle-wrap">
+    <input type="checkbox" id="beam-toggle"> SHOW GUIDE BEAM
+  </label>
+  <div class="hint">Hold ↑ / ↓ to climb · or use Tindeq<br>dodge the boulders &amp; walls</div>
+</div>
+
+<div id="dpad">
+  <div class="dpad-btn" id="btn-up">▲</div>
+  <div class="dpad-btn" id="btn-pause">☰</div>
+  <div class="dpad-btn" id="btn-down">▼</div>
+</div>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const overlay = document.getElementById('overlay');
+const flashEl = document.getElementById('flash');
+const hTime = document.getElementById('h-time');
+const hScore = document.getElementById('h-score');
+const hHeight = document.getElementById('h-height');
+const bestEl = document.getElementById('best-score');
+const lastEl = document.getElementById('last-info');
+const startBtn = document.getElementById('start-btn');
+
+const W = 420;
+let H = 720;
+let GROUND_Y = H - 60;  // updated by resize() on every layout change
+let scale = 1;
+function resize() {
+  scale   = window.innerWidth / W;
+  H       = Math.ceil(window.innerHeight / scale);
+  GROUND_Y = H - 60;
+  canvas.width  = W; canvas.height = H;
+  canvas.style.width  = window.innerWidth  + 'px';
+  canvas.style.height = window.innerHeight + 'px';
+}
+resize();
+window.addEventListener('resize', resize);
+
+// ── State ─────────────────────────────────────────────────────────────────
+let state = 'idle';
+let score = 0, best = 0;
+let seconds = 0, gameStartTime = 0;
+let weight = 0; // kg load (0 = ground, 70 = max height)
+let frameN = 0;
+let flashTimer = 0;
+let climber, obstacles, ropePoints, particles;
+let keys = { up:false, down:false };
+let bgScrollY = 0; // for parallax
+
+// ── Sequence program ──────────────────────────────────────────────────────
+let seqProgram = [];     // [{type:'rest'|'on', duration, height?}]
+let seqRepeatMax = 1;    // total passes to run
+let seqIndex = 0;        // current event index
+let seqRepeatCount = 0;  // completed passes
+let seqEventStartSec = 0;
+let seqTargetH = 0;      // current target height in metres
+let beamDisplayH = 0;    // smoothly interpolated guide beam height
+let seqEventSpawned = false; // true once the interval wall is spawned for the current 'on' event
+
+// ── Tindeq BLE ────────────────────────────────────────────────────────────
+let tindeqConnected = false;
+let tindeqKg = 0;          // latest raw reading from device
+let tindeqSmoothed = 0;    // lerped value driving climber position
+let tindeqMoving = false;  // true when Tindeq is actively moving the climber
+let tindeqCtrlChar = null; // cached control point characteristic
+
+const PROGRESSOR_SERVICE = '7e4e1701-1ea6-40c9-9dcc-13d34ffead57';
+const DATA_CHAR_UUID     = '7e4e1702-1ea6-40c9-9dcc-13d34ffead57';
+const CTRL_POINT_UUID    = '7e4e1703-1ea6-40c9-9dcc-13d34ffead57';
+const CMD_TARE_SCALE       = 100;
+const CMD_START_WEIGHT_MEAS = 101;
+const RES_WEIGHT_MEAS      = 1;
+
+// GROUND_Y declared at top of script, updated by resize()
+const MOVE_SPEED = 3.0;
+const SCROLL_SPEED = 1.5;
+const OBS_INTERVAL = 115;  // frames between new obstacles
+const ROPE_SAMPLE_FRAMES = 2;                              // sample waist-y every N frames
+const ROPE_PIXEL_STEP    = SCROLL_SPEED * ROPE_SAMPLE_FRAMES; // px between rope samples ≈ 5.2
+const ROPE_MAX_SAMPLES   = 52;                             // ≈ 270px rope length
+
+// ── RadKid climber sprites — embedded SVG, preloaded as Image ─────────────
+// Source: claude-design assets. JSX-attribute syntax (camelCase) is converted
+// to SVG attribute syntax (kebab-case) at load time via `jsxToSvg()`.
+const CLIMBER_SVG = {
+  idle: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><g stroke="#1A1A1A" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M40 50 L36 14 L48 12 L52 48 Z" fill="#1FD5C8" />
+    <circle cx="42" cy="10" r="6" fill="#F2C9A0" />
+    <path d="M38 6 L42 3 M45 7 L48 4" strokeWidth="2" fill="none" />
+    <path d="M68 48 L72 12 L84 14 L80 50 Z" fill="#1FD5C8" />
+    <circle cx="78" cy="10" r="6" fill="#F2C9A0" />
+    <path d="M74 6 L78 3 M80 7 L84 4" strokeWidth="2" fill="none" />
+    <path d="M40 52 Q38 78 46 92 L74 92 Q82 78 80 52 Q66 46 58 46 Q48 46 40 52 Z" fill="#1FD5C8" />
+    <path d="M48 50 Q60 56 72 50" strokeWidth="2.6" fill="none" />
+    <path d="M48 74 L72 74 L70 88 L50 88 Z" fill="#19B8AD" />
+    <path d="M48 74 L72 74" strokeWidth="2.4" />
+    <path d="M52 50 L52 64 M68 50 L68 62" strokeWidth="2" />
+    <circle cx="52" cy="65" r="1.6" fill="#1A1A1A" stroke="none" />
+    <circle cx="68" cy="63" r="1.6" fill="#1A1A1A" stroke="none" />
+    <path d="M52 60 Q56 56 60 60 T68 60" strokeWidth="2.2" stroke="#FF3D8A" fill="none" />
+    <path d="M50 22 Q48 36 54 42 Q66 44 70 36 Q72 30 70 22 Q66 14 60 14 Q54 14 50 22 Z" fill="#F2C9A0" />
+    <path d="M54 30 Q52 32 53 36 Q56 36 56 33 Z" fill="#F2C9A0" />
+    <path d="M62 26 L66 25" strokeWidth="2.4" />
+    <circle cx="64" cy="29" r="1.6" fill="#1A1A1A" stroke="none" />
+    <path d="M62 37 Q66 38 70 36" strokeWidth="2" fill="none" />
+    <path d="M48 18 Q46 8 58 6 Q72 4 74 16 L74 22 L50 22 Z" fill="#FF3D8A" />
+    <path d="M48 19 L42 22 L42 25 L50 24 Z" fill="#E62873" />
+    <path d="M50 20 L74 20" strokeWidth="2.2" />
+    <path d="M54 12 Q58 9 62 12 T70 11" strokeWidth="1.8" stroke="#FFF6E5" fill="none" />
+    <circle cx="60" cy="7" r="1.8" fill="#FFF6E5" />
+    <path d="M40 88 L80 88 L78 106 L68 106 L64 96 L56 96 L52 106 L42 106 Z" fill="#7A2BD9" />
+    <path d="M48 100 L52 94 L56 100 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M64 102 L68 96 L72 102 Z" fill="#FF3D8A" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M42 106 L52 106 L50 120 L40 120 Z" fill="#F2C9A0" />
+    <path d="M36 118 L54 118 L56 124 L36 124 Q30 124 30 120 Z" fill="#FFD23F" />
+    <path d="M38 121 L54 121" strokeWidth="2" />
+    <path d="M40 122 Q46 120 54 122" strokeWidth="1.8" stroke="#FF3D8A" fill="none" />
+    <path d="M68 106 L80 106 L82 120 L70 120 Z" fill="#F2C9A0" />
+    <path d="M64 118 L86 118 L88 124 L66 124 Q62 124 62 120 Z" fill="#FFD23F" />
+    <path d="M68 121 L86 121" strokeWidth="2" />
+    <path d="M70 122 Q78 120 86 122" strokeWidth="1.8" stroke="#FF3D8A" fill="none" />
+    <ellipse cx="38" cy="93" rx="4.5" ry="6" fill="#FFF6E5" />
+    <path d="M34 89 L42 89" strokeWidth="2" />
+  </g></svg>`,
+  climbL: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><g stroke="#1A1A1A" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M58 46 L78 28 L96 14" fill="#F2C9A0" stroke="none" />
+    <path d="M58 48 L78 28 L92 18 L72 44 Z" fill="#1FD5C8" />
+    <circle cx="100" cy="13" r="6.5" fill="#F2C9A0" />
+    <path d="M96 9 L102 6 M100 14 L106 12" strokeWidth="2" fill="none" />
+    <path d="M95 12 Q98 6 100 8" strokeWidth="2" fill="none" />
+    <path d="M56 86 L72 84 L82 100 L72 106 Z" fill="#7A2BD9" />
+    <path d="M78 102 L72 106 L76 116 L86 112 Z" fill="#F2C9A0" />
+    <path d="M74 114 L94 108 L96 116 L80 122 Q74 122 72 118 Z" fill="#FFD23F" />
+    <path d="M76 117 L94 113" strokeWidth="2" />
+    <path d="M76 119 Q84 116 94 115" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+    <path d="M40 50 Q40 78 46 92 L74 92 Q80 78 78 50 Q68 44 58 44 Q48 44 40 50 Z" fill="#1FD5C8" />
+    <path d="M48 50 Q60 56 72 50" strokeWidth="2.6" fill="none" />
+    <path d="M48 74 L70 74 L68 88 L50 88 Z" fill="#19B8AD" />
+    <path d="M48 74 L70 74" strokeWidth="2.4" />
+    <path d="M52 50 L52 64 M66 50 L66 62" strokeWidth="2" />
+    <circle cx="52" cy="65" r="1.6" fill="#1A1A1A" stroke="none" />
+    <circle cx="66" cy="63" r="1.6" fill="#1A1A1A" stroke="none" />
+    <path d="M50 60 Q54 56 58 60 T66 60" strokeWidth="2.2" stroke="#FF3D8A" fill="none" />
+    <path d="M44 52 L36 38 L42 26" fill="#F2C9A0" stroke="none" />
+    <path d="M40 50 L32 36 L40 28 L48 50 Z" fill="#1FD5C8" />
+    <path d="M38 20 Q42 16 48 20 L50 30 Q46 32 40 30 Z" fill="#F2C9A0" />
+    <path d="M40 20 L40 16 M44 19 L44 15 M48 20 L48 16" strokeWidth="2" />
+    <path d="M40 88 L78 88 L76 106 L66 106 L62 96 L56 96 L52 106 L40 106 Z" fill="#7A2BD9" />
+    <path d="M46 98 L50 92 L54 98 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M62 100 L66 94 L70 100 Z" fill="#FF3D8A" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M42 106 L54 106 L52 122 L40 122 Z" fill="#F2C9A0" />
+    <path d="M36 118 L54 118 L56 124 L36 124 Q30 124 30 120 Z" fill="#FFD23F" />
+    <path d="M38 121 L54 121" strokeWidth="2" />
+    <path d="M40 122 Q46 120 54 122" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+    <path d="M50 20 Q48 36 54 42 Q66 44 72 34 Q74 28 72 18 Q66 10 58 12 Q52 14 50 20 Z" fill="#F2C9A0" />
+    <path d="M54 30 Q52 32 53 36 Q56 36 56 33 Z" fill="#F2C9A0" />
+    <path d="M64 22 L70 21" strokeWidth="2.4" />
+    <circle cx="68" cy="25" r="1.6" fill="#1A1A1A" stroke="none" />
+    <path d="M62 36 L68 37" strokeWidth="2.2" />
+    <path d="M48 16 Q46 4 60 2 Q74 2 76 14 L76 20 L50 20 Z" fill="#FF3D8A" />
+    <path d="M48 17 L42 20 L42 23 L50 22 Z" fill="#E62873" />
+    <path d="M50 18 L76 18" strokeWidth="2.2" />
+    <path d="M54 8 Q58 5 62 8 T70 7" strokeWidth="1.8" stroke="#FFF6E5" fill="none" />
+    <circle cx="62" cy="4" r="1.8" fill="#FFF6E5" />
+    <ellipse cx="36" cy="94" rx="4.5" ry="6" fill="#FFF6E5" />
+    <path d="M32 90 L40 90" strokeWidth="2" />
+  </g></svg>`,
+  climbR: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><g stroke="#1A1A1A" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M62 46 L40 28 L24 14" fill="#F2C9A0" stroke="none" />
+    <path d="M62 48 L40 28 L28 18 L48 44 Z" fill="#1FD5C8" />
+    <circle cx="20" cy="13" r="6.5" fill="#F2C9A0" />
+    <path d="M14 9 L20 6 M16 14 L22 12" strokeWidth="2" fill="none" />
+    <path d="M22 12 Q20 6 18 8" strokeWidth="2" fill="none" />
+    <path d="M50 84 L64 86 L56 100 L46 102 Z" fill="#7A2BD9" />
+    <path d="M50 102 L46 102 L52 116 L58 114 Z" fill="#F2C9A0" />
+    <path d="M30 114 L52 110 L56 116 L36 122 Q30 122 28 118 Z" fill="#FFD23F" />
+    <path d="M32 117 L54 114" strokeWidth="2" />
+    <path d="M32 119 Q42 116 54 115" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+    <path d="M42 50 Q40 78 48 92 L78 92 Q82 78 80 50 Q70 44 60 44 Q50 44 42 50 Z" fill="#1FD5C8" />
+    <path d="M50 50 Q60 56 72 50" strokeWidth="2.6" fill="none" />
+    <path d="M50 74 L72 74 L70 88 L52 88 Z" fill="#19B8AD" />
+    <path d="M50 74 L72 74" strokeWidth="2.4" />
+    <path d="M54 50 L54 64 M68 50 L68 62" strokeWidth="2" />
+    <circle cx="54" cy="65" r="1.6" fill="#1A1A1A" stroke="none" />
+    <circle cx="68" cy="63" r="1.6" fill="#1A1A1A" stroke="none" />
+    <path d="M54 60 Q58 56 62 60 T70 60" strokeWidth="2.2" stroke="#FF3D8A" fill="none" />
+    <path d="M76 52 L86 38 L80 26" fill="#F2C9A0" stroke="none" />
+    <path d="M80 50 L90 36 L82 28 L74 50 Z" fill="#1FD5C8" />
+    <path d="M74 20 Q78 16 84 20 L86 30 Q82 32 76 30 Z" fill="#F2C9A0" />
+    <path d="M76 20 L76 16 M80 19 L80 15 M84 20 L84 16" strokeWidth="2" />
+    <path d="M42 88 L80 88 L80 106 L68 106 L64 96 L58 96 L54 106 L44 106 Z" fill="#7A2BD9" />
+    <path d="M48 98 L52 92 L56 98 Z" fill="#FF3D8A" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M66 100 L70 94 L74 100 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M68 106 L80 106 L82 122 L70 122 Z" fill="#F2C9A0" />
+    <path d="M64 118 L84 118 L88 124 L66 124 Q62 124 62 120 Z" fill="#FFD23F" />
+    <path d="M66 121 L84 121" strokeWidth="2" />
+    <path d="M68 122 Q76 120 84 122" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+    <path d="M48 18 Q46 30 50 38 Q56 44 64 42 Q72 38 72 28 Q72 16 62 12 Q52 12 48 18 Z" fill="#F2C9A0" />
+    <path d="M70 30 Q72 32 71 36 Q68 36 68 33 Z" fill="#F2C9A0" />
+    <path d="M52 22 L58 21" strokeWidth="2.4" />
+    <circle cx="55" cy="25" r="1.6" fill="#1A1A1A" stroke="none" />
+    <path d="M56 37 L62 36" strokeWidth="2.2" />
+    <path d="M46 14 Q44 4 58 2 Q74 4 74 16 L74 18 L46 18 Z" fill="#FF3D8A" />
+    <path d="M74 17 L82 20 L82 23 L74 22 Z" fill="#E62873" />
+    <path d="M46 16 L74 16" strokeWidth="2.2" />
+    <path d="M50 8 Q54 5 58 8 T66 7" strokeWidth="1.8" stroke="#FFF6E5" fill="none" />
+    <circle cx="60" cy="4" r="1.8" fill="#FFF6E5" />
+    <ellipse cx="84" cy="94" rx="4.5" ry="6" fill="#FFF6E5" />
+    <path d="M80 90 L88 90" strokeWidth="2" />
+  </g></svg>`,
+  dyno: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><g stroke="#1A1A1A" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M30 116 L24 124 M48 118 L42 126 M70 118 L76 126 M90 116 L96 124" strokeWidth="2.4" stroke="#FF3D8A" fill="none" />
+    <path d="M58 122 L58 128" strokeWidth="2.4" stroke="#FFD23F" fill="none" />
+    <path d="M40 50 L38 14 L48 10 L52 48 Z" fill="#1FD5C8" />
+    <path d="M40 8 Q42 4 50 6 L50 14 Q44 16 38 14 Z" fill="#F2C9A0" />
+    <path d="M42 8 L42 4 M46 7 L46 3 M49 8 L49 4" strokeWidth="2" fill="none" />
+    <path d="M68 48 L72 10 L82 14 L80 50 Z" fill="#1FD5C8" />
+    <path d="M70 6 Q74 2 82 4 L82 12 Q76 14 70 12 Z" fill="#F2C9A0" />
+    <path d="M72 6 L72 2 M76 5 L76 1 M80 6 L80 2" strokeWidth="2" fill="none" />
+    <path d="M40 52 Q40 80 46 92 L74 92 Q80 80 80 52 Q68 44 60 44 Q48 44 40 52 Z" fill="#1FD5C8" />
+    <path d="M52 50 Q60 38 70 52" strokeWidth="2.6" fill="none" />
+    <path d="M48 74 L72 74 L70 88 L50 88 Z" fill="#19B8AD" />
+    <path d="M48 74 L72 74" strokeWidth="2.4" />
+    <path d="M52 52 L54 66 M66 52 L66 64" strokeWidth="2" />
+    <circle cx="54" cy="67" r="1.6" fill="#1A1A1A" stroke="none" />
+    <circle cx="66" cy="65" r="1.6" fill="#1A1A1A" stroke="none" />
+    <path d="M52 62 Q56 58 60 62 T68 62" strokeWidth="2.2" stroke="#FF3D8A" fill="none" />
+    <path d="M50 24 Q48 38 54 44 Q66 46 70 38 Q72 32 70 24 Q66 16 60 16 Q54 16 50 24 Z" fill="#F2C9A0" />
+    <path d="M54 32 Q52 34 53 38 Q56 38 56 35 Z" fill="#F2C9A0" />
+    <circle cx="64" cy="28" r="2.4" fill="#FFF6E5" stroke="#1A1A1A" strokeWidth="2" />
+    <circle cx="65" cy="28" r="1.2" fill="#1A1A1A" stroke="none" />
+    <path d="M62 38 Q66 44 70 38 Q66 36 62 38 Z" fill="#1A1A1A" />
+    <path d="M48 20 Q46 10 60 8 Q74 8 76 18 L76 24 L50 24 Z" fill="#FF3D8A" />
+    <path d="M48 21 L42 24 L42 27 L50 26 Z" fill="#E62873" />
+    <path d="M50 22 L76 22" strokeWidth="2.2" />
+    <path d="M54 14 Q58 11 62 14 T70 13" strokeWidth="1.8" stroke="#FFF6E5" fill="none" />
+    <circle cx="62" cy="10" r="1.8" fill="#FFF6E5" />
+    <path d="M40 88 L80 88 L78 104 L68 104 L64 96 L56 96 L52 104 L42 104 Z" fill="#7A2BD9" />
+    <path d="M48 98 L52 92 L56 98 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M64 100 L68 94 L72 100 Z" fill="#FF3D8A" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M42 104 L52 104 L54 116 L40 118 Z" fill="#F2C9A0" />
+    <path d="M34 114 L54 112 L58 122 L36 124 Q30 124 30 120 Z" fill="#FFD23F" />
+    <path d="M36 119 L56 118" strokeWidth="2" />
+    <path d="M68 104 L78 104 L82 116 L70 118 Z" fill="#F2C9A0" />
+    <path d="M64 114 L86 112 L90 122 L66 124 Q62 124 62 120 Z" fill="#FFD23F" />
+    <path d="M66 119 L86 118" strokeWidth="2" />
+    <ellipse cx="36" cy="94" rx="4.5" ry="6" fill="#FFF6E5" />
+    <path d="M32 90 L40 90" strokeWidth="2" />
+  </g></svg>`,
+  fall: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><g stroke="#1A1A1A" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+    <g transform="translate(96 22) rotate(-35) scale(0.78)">
+      <path d="M-14 0 Q-16 -10 -2 -12 Q12 -10 14 0 L14 4 L-12 4 Z" fill="#FF3D8A" />
+      <path d="M-14 1 L-20 4 L-20 7 L-12 6 Z" fill="#E62873" />
+      <path d="M-12 2 L14 2" strokeWidth="2.2" />
+      <circle cx="0" cy="-10" r="1.8" fill="#FFF6E5" />
+    </g>
+    <path d="M118 4 Q104 18 90 26" strokeWidth="2.4" stroke="#FFD23F" strokeDasharray="3 4" fill="none" />
+    <path d="M124 12 Q108 22 96 30" strokeWidth="2" stroke="#FF3D8A" strokeDasharray="3 4" fill="none" />
+    <g transform="translate(64 70) rotate(-18) scale(0.85) translate(-64 -70)">
+      <path d="M44 60 L26 42 L18 30" fill="#F2C9A0" stroke="none" />
+      <path d="M42 58 L26 42 L20 32 L36 54 Z" fill="#1FD5C8" />
+      <g transform="translate(16 28)">
+        <circle cx="0" cy="0" r="5.5" fill="#F2C9A0" />
+        <path d="M-3 -4 L-1 -8 M1 -5 L3 -9 M5 -4 L7 -8" strokeWidth="2" fill="none" />
+      </g>
+      <path d="M76 60 L94 50 L108 50" fill="#F2C9A0" stroke="none" />
+      <path d="M74 58 L92 48 L98 56 L80 64 Z" fill="#1FD5C8" />
+      <g transform="translate(108 48)">
+        <circle cx="0" cy="0" r="5.5" fill="#F2C9A0" />
+        <path d="M3 -4 L7 -4 M2 0 L6 0 M3 4 L7 4" strokeWidth="2" fill="none" />
+      </g>
+      <path d="M42 60 Q40 86 46 100 L74 100 Q80 86 78 60 Q68 54 60 54 Q50 54 42 60 Z" fill="#1FD5C8" />
+      <path d="M48 60 Q60 66 72 60" strokeWidth="2.6" fill="none" />
+      <path d="M48 82 L70 82 L68 96 L50 96 Z" fill="#19B8AD" />
+      <path d="M48 82 L70 82" strokeWidth="2.4" />
+      <path d="M52 60 L52 72 M66 60 L66 70" strokeWidth="2" />
+      <circle cx="52" cy="73" r="1.6" fill="#1A1A1A" stroke="none" />
+      <circle cx="66" cy="71" r="1.6" fill="#1A1A1A" stroke="none" />
+      <path d="M52 68 Q56 64 60 68 T68 68" strokeWidth="2.2" stroke="#FF3D8A" fill="none" />
+      <path d="M50 32 Q48 48 54 54 Q66 56 70 48 Q72 42 70 32 Q66 22 60 22 Q54 22 50 32 Z" fill="#F2C9A0" />
+      <path d="M54 40 Q52 42 53 46 Q56 46 56 43 Z" fill="#F2C9A0" />
+      <path d="M52 22 L50 16 L54 22 L56 14 L60 22 L64 14 L66 22 L70 18 L70 26" strokeWidth="2" fill="#3A1E5C" />
+      <circle cx="64" cy="38" r="3" fill="#FFF6E5" stroke="#1A1A1A" strokeWidth="2" />
+      <circle cx="64" cy="38" r="1.4" fill="#1A1A1A" stroke="none" />
+      <path d="M48 38 Q46 42 48 44 Q50 44 50 42 Z" fill="#1FD5C8" />
+      <ellipse cx="64" cy="48" rx="3" ry="3.5" fill="#1A1A1A" />
+      <path d="M42 96 L78 96 L76 114 L66 114 L62 104 L58 104 L54 114 L42 114 Z" fill="#7A2BD9" />
+      <path d="M48 106 L52 100 L56 106 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
+      <path d="M42 114 L52 114 L60 124 L46 126 Z" fill="#F2C9A0" />
+      <path d="M40 122 L62 120 L64 128 L42 130 Q36 130 36 126 Z" fill="#FFD23F" />
+      <path d="M42 125 L62 124" strokeWidth="2" />
+      <path d="M64 114 L76 114 L80 122 L68 124 Z" fill="#F2C9A0" />
+      <path d="M64 120 L84 118 L86 126 L66 128 Q62 128 62 124 Z" fill="#FFD23F" />
+      <path d="M66 123 L84 122" strokeWidth="2" />
+      <ellipse cx="38" cy="98" rx="4.5" ry="6" fill="#FFF6E5" />
+    </g>
+  </g></svg>`,
+  summit: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><g stroke="#1A1A1A" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+    <g stroke="#FFD23F" fill="#FFD23F" strokeWidth="2">
+      <path d="M22 18 L22 8 M17 13 L27 13" />
+      <path d="M104 22 L104 14 M100 18 L108 18" />
+      <path d="M18 50 L14 50 M16 48 L16 52" />
+      <path d="M110 48 L114 48 M112 46 L112 50" />
+    </g>
+    <g stroke="#FF3D8A" fill="none" strokeWidth="2.2">
+      <circle cx="14" cy="32" r="3" />
+      <circle cx="112" cy="34" r="3" />
+    </g>
+    <path d="M44 44 L40 12" fill="none" strokeWidth="3.2" />
+    <path d="M38 42 L38 14 L48 12 L52 44 Z" fill="#1FD5C8" />
+    <path d="M36 6 Q40 2 50 4 L52 14 Q44 16 36 12 Z" fill="#F2C9A0" />
+    <path d="M38 6 L38 2 M42 5 L42 1 M46 5 L46 1 M50 6 L50 2" strokeWidth="2" />
+    <path d="M70 50 L80 70 L86 84" fill="#F2C9A0" stroke="none" />
+    <path d="M72 50 L80 70 L86 70 L78 50 Z" fill="#1FD5C8" />
+    <g transform="translate(86 82)">
+      <path d="M-4 -4 Q-2 -8 4 -6 L6 4 Q-2 6 -6 2 Z" fill="#F2C9A0" />
+      <path d="M0 -8 L0 -14" strokeWidth="2.5" />
+      <path d="M-2 -14 Q0 -16 2 -14 L2 -8 L-2 -8 Z" fill="#F2C9A0" />
+    </g>
+    <path d="M40 52 Q38 78 46 92 L74 92 Q82 78 80 52 Q66 46 58 46 Q48 46 40 52 Z" fill="#1FD5C8" />
+    <path d="M48 50 Q60 56 72 50" strokeWidth="2.6" fill="none" />
+    <path d="M48 74 L72 74 L70 88 L50 88 Z" fill="#19B8AD" />
+    <path d="M48 74 L72 74" strokeWidth="2.4" />
+    <path d="M52 50 L52 64 M68 50 L68 62" strokeWidth="2" />
+    <circle cx="52" cy="65" r="1.6" fill="#1A1A1A" stroke="none" />
+    <circle cx="68" cy="63" r="1.6" fill="#1A1A1A" stroke="none" />
+    <path d="M52 60 Q56 56 60 60 T68 60" strokeWidth="2.2" stroke="#FF3D8A" fill="none" />
+    <path d="M50 22 Q48 38 54 44 Q66 46 70 38 Q72 32 70 22 Q66 14 60 14 Q54 14 50 22 Z" fill="#F2C9A0" />
+    <path d="M54 30 Q52 32 53 36 Q56 36 56 33 Z" fill="#F2C9A0" />
+    <path d="M62 28 Q66 26 70 28" strokeWidth="2.4" fill="none" />
+    <path d="M60 36 Q66 44 72 36" strokeWidth="2.4" fill="#FFF6E5" />
+    <path d="M60 36 L72 36" strokeWidth="2" />
+    <path d="M48 18 Q46 6 60 4 Q74 4 76 16 L76 22 L50 22 Z" fill="#FF3D8A" />
+    <path d="M48 19 L42 22 L42 25 L50 24 Z" fill="#E62873" />
+    <path d="M50 20 L76 20" strokeWidth="2.2" />
+    <path d="M54 10 Q58 7 62 10 T70 9" strokeWidth="1.8" stroke="#FFF6E5" fill="none" />
+    <circle cx="62" cy="6" r="1.8" fill="#FFF6E5" />
+    <path d="M40 88 L80 88 L78 106 L68 106 L64 96 L56 96 L52 106 L42 106 Z" fill="#7A2BD9" />
+    <path d="M48 100 L52 94 L56 100 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M64 102 L68 96 L72 102 Z" fill="#FF3D8A" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M42 106 L52 106 L50 122 L40 122 Z" fill="#F2C9A0" />
+    <path d="M34 118 L54 118 L56 124 L34 124 Q28 124 28 120 Z" fill="#FFD23F" />
+    <path d="M36 121 L54 121" strokeWidth="2" />
+    <path d="M38 122 Q46 120 54 122" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+    <path d="M68 106 L80 106 L82 122 L70 122 Z" fill="#F2C9A0" />
+    <path d="M64 118 L86 118 L88 124 L66 124 Q62 124 62 120 Z" fill="#FFD23F" />
+    <path d="M66 121 L86 121" strokeWidth="2" />
+    <path d="M68 122 Q76 120 86 122" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+    <ellipse cx="38" cy="93" rx="4.5" ry="6" fill="#FFF6E5" />
+    <path d="M34 89 L42 89" strokeWidth="2" />
+  </g></svg>`,
+  hurt: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><g stroke="#1A1A1A" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round">
+    <g stroke="#FFD23F" fill="#FFD23F" strokeWidth="1.6">
+      <path d="M16 14 L18 18 L22 18 L19 20 L20 24 L16 22 L12 24 L13 20 L10 18 L14 18 Z" />
+      <path d="M104 10 L106 14 L110 14 L107 16 L108 20 L104 18 L100 20 L101 16 L98 14 L102 14 Z" />
+      <path d="M108 36 L110 40 L114 40 L111 42 L112 46 L108 44 L104 46 L105 42 L102 40 L106 40 Z" />
+    </g>
+    <g transform="translate(94 56)">
+      <path d="M-12 -8 Q-14 0 -12 6 L-2 8 Q0 6 0 -6 Q-2 -10 -12 -8 Z" fill="#FFF6E5" />
+      <path d="M-8 0 L-4 0 M-8 4 L-6 4" strokeWidth="2.2" />
+    </g>
+    <path d="M44 50 L36 32 L48 22" fill="#F2C9A0" stroke="none" />
+    <path d="M40 50 L32 32 L42 24 L50 48 Z" fill="#1FD5C8" />
+    <path d="M44 18 Q48 14 54 18 L56 26 Q50 28 44 26 Z" fill="#F2C9A0" />
+    <path d="M46 18 L46 14 M50 17 L50 13 M54 18 L54 14" strokeWidth="2" />
+    <path d="M72 54 L80 80" fill="#F2C9A0" stroke="none" />
+    <path d="M72 52 L82 52 L84 80 L74 82 Z" fill="#1FD5C8" />
+    <circle cx="80" cy="86" r="5.5" fill="#F2C9A0" />
+    <path d="M78 90 L82 92" strokeWidth="2" />
+    <path d="M40 54 Q40 80 46 94 L74 94 Q80 80 78 54 Q68 50 58 50 Q48 50 40 54 Z" fill="#1FD5C8" />
+    <path d="M48 54 Q60 60 72 54" strokeWidth="2.6" fill="none" />
+    <path d="M48 76 L70 76 L68 90 L50 90 Z" fill="#19B8AD" />
+    <path d="M48 76 L70 76" strokeWidth="2.4" />
+    <path d="M52 54 L52 66 M66 54 L66 64" strokeWidth="2" />
+    <circle cx="52" cy="67" r="1.6" fill="#1A1A1A" stroke="none" />
+    <circle cx="66" cy="65" r="1.6" fill="#1A1A1A" stroke="none" />
+    <path d="M52 62 Q56 58 60 62 T68 62" strokeWidth="2.2" stroke="#FF3D8A" fill="none" />
+    <g transform="translate(60 30) rotate(-12) translate(-60 -30)">
+      <path d="M50 22 Q48 38 54 44 Q66 46 70 38 Q72 32 70 22 Q66 14 60 14 Q54 14 50 22 Z" fill="#F2C9A0" />
+      <path d="M54 30 Q52 32 53 36 Q56 36 56 33 Z" fill="#F2C9A0" />
+      <path d="M60 26 L66 32 M66 26 L60 32" strokeWidth="2.4" />
+      <ellipse cx="64" cy="40" rx="3" ry="2" fill="#1A1A1A" />
+      <path d="M62 41 Q64 43 66 41" strokeWidth="1.6" stroke="#FF3D8A" fill="#FF3D8A" />
+      <g transform="translate(60 18) rotate(8) translate(-60 -18)">
+        <path d="M48 18 Q46 6 60 4 Q74 4 76 16 L76 22 L50 22 Z" fill="#FF3D8A" />
+        <path d="M48 19 L42 22 L42 25 L50 24 Z" fill="#E62873" />
+        <path d="M50 20 L76 20" strokeWidth="2.2" />
+        <circle cx="62" cy="6" r="1.8" fill="#FFF6E5" />
+      </g>
+    </g>
+    <path d="M40 90 L80 90 L78 108 L68 108 L64 98 L56 98 L52 108 L42 108 Z" fill="#7A2BD9" />
+    <path d="M48 100 L52 94 L56 100 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
+    <path d="M42 108 L54 108 L56 122 L40 124 Z" fill="#F2C9A0" />
+    <path d="M34 120 L58 120 L60 126 L36 128 Q30 128 30 124 Z" fill="#FFD23F" />
+    <path d="M36 123 L58 123" strokeWidth="2" />
+    <path d="M64 108 L78 108 L80 122 L70 122 Z" fill="#F2C9A0" />
+    <path d="M62 120 L86 120 L88 126 L66 126 Q62 126 62 122 Z" fill="#FFD23F" />
+    <path d="M64 123 L86 123" strokeWidth="2" />
+    <ellipse cx="38" cy="94" rx="4.5" ry="6" fill="#FFF6E5" />
+  </g></svg>`,
+};
+
+function jsxToSvg(s) {
+  // JSX attributes are camelCase; SVG needs kebab-case. Convert the ones we use.
+  return s
+    .replace(/strokeWidth=/g,     'stroke-width=')
+    .replace(/strokeLinecap=/g,   'stroke-linecap=')
+    .replace(/strokeLinejoin=/g,  'stroke-linejoin=')
+    .replace(/strokeDasharray=/g, 'stroke-dasharray=');
+}
+
+function svgToImage(svgStr) {
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgStr);
+  const img = new Image();
+  img.src = url;
+  return img;
+}
+
+const CLIMBER_IMG = {};
+for (const [k, v] of Object.entries(CLIMBER_SVG)) {
+  CLIMBER_IMG[k] = svgToImage(jsxToSvg(v));
+}
+
+// New palette — matches Rad Kid asset set
+const PAL = {
+  ink:    '#1A1A1A',
+  cream:  '#FFF6E5',
+  teal:   '#1FD5C8',
+  pink:   '#FF3D8A',
+  yellow: '#FFD23F',
+  purple: '#7A2BD9',
+  skin:   '#F2C9A0',
+};
+
+// ── Seeded random ─────────────────────────────────────────────────────────
+function rng(seed) {
+  let s = seed | 0;
+  return function() {
+    s = s + 0x6D2B79F5 | 0;
+    let t = Math.imul(s ^ s>>>15, 1|s);
+    t = t + Math.imul(t ^ t>>>7, 61|t) ^ t;
+    return ((t ^ t>>>14) >>> 0) / 4294967296;
+  };
+}
+
+// ── Sequence DSL parser ───────────────────────────────────────────────────
+// Supported syntax (case-insensitive):
+//   X seconds rest
+//   Y seconds on Z height
+//   repeat this V times  (or: repeat V times)
+function parseSequence(text) {
+  const events = [];
+  let repeatTimes = 1;
+  for (const raw of text.trim().split('\n')) {
+    const l = raw.trim().toLowerCase();
+    if (!l) continue;
+    let m;
+    m = l.match(/^(\d+(?:\.\d+)?)\s+seconds?\s+rest/);
+    if (m) { events.push({ type:'rest', duration:+m[1] }); continue; }
+    m = l.match(/^(\d+(?:\.\d+)?)\s+seconds?\s+on\s+(\d+(?:\.\d+)?)\s+height/);
+    if (m) { events.push({ type:'on', duration:+m[1], height:+m[2] }); continue; }
+    m = l.match(/^repeat(?:\s+this)?\s+(\d+)\s+times?/);
+    if (m) { repeatTimes = +m[1]; continue; }
+  }
+  return { events, repeatTimes };
+}
+
+// ── Tindeq BLE connection ─────────────────────────────────────────────────
+async function connectTindeq() {
+  const btn = document.getElementById('tindeq-btn');
+  if (tindeqConnected) return;
+  try {
+    btn.textContent = '⏳ Connecting…';
+    btn.disabled = true;
+    const device = await navigator.bluetooth.requestDevice({
+      filters: [{ namePrefix: 'Progressor' }],
+      optionalServices: [PROGRESSOR_SERVICE]
+    });
+    const server  = await device.gatt.connect();
+    const service = await server.getPrimaryService(PROGRESSOR_SERVICE);
+    const dataChar = await service.getCharacteristic(DATA_CHAR_UUID);
+    tindeqCtrlChar  = await service.getCharacteristic(CTRL_POINT_UUID);
+
+    await dataChar.startNotifications();
+    dataChar.addEventListener('characteristicvaluechanged', handleTindeqData);
+
+    // Tare scale then start streaming
+    await tindeqCtrlChar.writeValue(new Uint8Array([CMD_TARE_SCALE]));
+    await new Promise(r => setTimeout(r, 300));
+    await tindeqCtrlChar.writeValue(new Uint8Array([CMD_START_WEIGHT_MEAS]));
+
+    tindeqConnected = true;
+    btn.textContent = '✓ Tindeq Connected';
+    btn.classList.add('connected');
+    btn.disabled = false;
+
+    device.addEventListener('gattserverdisconnected', () => {
+      tindeqConnected = false;
+      tindeqKg = 0; tindeqSmoothed = 0;
+      btn.textContent = '🔗 Connect Tindeq';
+      btn.classList.remove('connected');
+    });
+  } catch(e) {
+    btn.textContent = '🔗 Connect Tindeq';
+    btn.disabled = false;
+    if (e.name !== 'NotFoundError') console.error('Tindeq:', e);
+  }
+}
+
+function handleTindeqData(event) {
+  const data = event.target.value;
+  if (data.getUint8(0) === RES_WEIGHT_MEAS) {
+    // Each measurement is 8 bytes: float32 weight + uint32 timestamp (little-endian)
+    for (let i = 2; i + 4 <= data.byteLength; i += 8) {
+      tindeqKg = Math.max(0, data.getFloat32(i, /*littleEndian=*/true));
+    }
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────
+function initGame() {
+  climber = { x:90, y: GROUND_Y - 20, w:30, h:44, animT:0, trail:[] };
+  obstacles = [];
+  ropePoints = [];
+  ropePoints = []; // history trail — filled as the game plays
+  particles = [];
+  score = 0; seconds = 0; gameStartTime = performance.now(); weight = 0; frameN = 0;
+  bgScrollY = 0;
+
+  // Parse and apply workout program from start screen
+  const parsed = parseSequence(document.getElementById('seq-input').value);
+  seqProgram = parsed.events;
+  seqRepeatMax = parsed.repeatTimes;
+  seqIndex = 0; seqRepeatCount = 0; seqEventStartSec = 0;
+  seqTargetH = 0; beamDisplayH = 0; seqEventSpawned = false;
+  tindeqSmoothed = 0; tindeqMoving = false;
+}
+
+// ── Obstacle generation ───────────────────────────────────────────────────
+// Two types: Fontainebleau boulder (ground-level round boulder cluster)
+//            Yosemite wall (tall flat granite slab from ground)
+function spawnObstacle() {
+  const type = Math.random() < 0.5 ? 'boulder' : 'wall';
+  const seed = Math.floor(Math.random()*99999);
+  const r = rng(seed);
+
+  if (type === 'boulder') {
+    // Cluster of 1-3 boulders
+    const count = 1 + Math.floor(r()*2.4);
+    const boulders = [];
+    let cx = W + 30;
+    for (let b=0; b<count; b++) {
+      const rad = 28 + r()*38;
+      const ox = b === 0 ? 0 : boulders[b-1].ox + boulders[b-1].r*1.4 + r()*20;
+      const squish = 0.55 + r()*0.25; // vertical squish — boulders sit on ground
+      boulders.push({ ox, r: rad, squish,
+        color1: pickGranite(r), color2: pickGranite(r),
+        seed: Math.floor(r()*9999) });
+    }
+    const totalW = boulders[boulders.length-1].ox + boulders[boulders.length-1].r*2 + 10;
+    obstacles.push({ type:'boulder', x: W + 50, boulders, totalW, seed, scored:false });
+  } else {
+    // Yosemite wall — tall granite slab, variable width
+    const wallW = 30 + r()*45;
+    const wallH = 160 + r()*280;
+    obstacles.push({ type:'wall', x: W+30, wallW, wallH, seed, scored:false,
+      color1: pickGranite(r), color2: pickGranite(r) });
+  }
+}
+
+const GRANITE_PALETTES = [
+  { base:'#8c8a90', light:'#aeacb4', dark:'#5c5a60', crack:'#404048', moss:'#5a6848' },
+  { base:'#9a9080', light:'#b8ac98', dark:'#625848', crack:'#3a3228', moss:'#607050' },
+  { base:'#7a8088', light:'#9aa0a8', dark:'#4a5058', crack:'#303840', moss:'#506058' },
+  { base:'#b09878', light:'#c8b090', dark:'#705840', crack:'#403020', moss:'#688050' },
+];
+function pickGranite(r) { return GRANITE_PALETTES[Math.floor(r()*GRANITE_PALETTES.length)]; }
+
+// Spawn one wide slab whose pixel width equals `duration` seconds of travel
+function spawnIntervalWall(duration, heightM) {
+  const wallW = Math.round(duration * 60 * SCROLL_SPEED) + 20;
+  const wallH = Math.min(heightM * 4, GROUND_Y - 30);
+  const seed  = Math.floor(Math.random() * 99999);
+  const r = rng(seed);
+  obstacles.push({ type:'interval', x: W + 30, wallW, wallH, seed, scored:false,
+    color1: pickGranite(r), color2: pickGranite(r) });
+}
+
+// ── Draw: Sky & background ────────────────────────────────────────────────
+// Rad Kid art style: chunky ink outlines on flat color, warm dusk palette.
+
+// Pre-generate background trees — two parallax bands (far + near).
+// `type` chooses pine vs round (oak); the chunky outlined shapes match the
+// SVG TreeLine designs from the asset set.
+const BG_TREES = [];
+for (let i=0; i<32; i++) {
+  const r2 = rng(i*137+7);
+  const layer = r2() < 0.55 ? 0 : 1; // 0 = far, 1 = near
+  BG_TREES.push({
+    x: r2() * (W + 80),
+    // Plant slightly above the ground so canopies tower into the green band.
+    baseOff: layer===0 ? -28 - r2()*10 : -10 + r2()*6,
+    h: layer===0 ? 110 + r2()*50 : 140 + r2()*60,
+    w: layer===0 ? 50 + r2()*20 : 72 + r2()*28,
+    type: r2() < 0.55 ? 'pine' : 'round',
+    layer,
+    seed: Math.floor(r2()*9999)
+  });
+}
+BG_TREES.sort((a,b) => a.layer - b.layer);
+
+// Mountain ridges — chunky outlined silhouettes.
+// FAR: tall jagged snow-capped alpine peaks, MID: lower broader hills.
+// Source paths from env-sky.jsx, scaled to canvas width.
+const FAR_RIDGE = [
+  [0,80],[30,50],[60,78],[95,18],[130,70],[170,36],[210,82],
+  [255,24],[300,70],[340,44],[380,76],[400,50]
+]; // viewBox 0..400 wide, baseline 140
+const FAR_SNOWCAPS = [
+  [88,28,95,18,102,28,99,36,91,36],
+  [249,34,255,24,262,34,259,42,252,42],
+  [166,44,170,36,174,44,172,50,168,50],
+  [333,52,340,44,347,52,344,58,336,58],
+];
+const MID_RIDGE = [
+  [0,100],[30,78],[55,96],[90,60],[130,100],[165,72],[210,104],
+  [245,64],[290,102],[330,80],[365,100],[400,76]
+]; // viewBox 0..400 wide, baseline 140
+
+function drawSky() {
+  // Dusk gradient — warm peach to pale cream near the horizon.
+  const sky = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  sky.addColorStop(0,    '#FFB47A');
+  sky.addColorStop(0.55, '#FFD089');
+  sky.addColorStop(1,    '#FFE9BF');
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, GROUND_Y);
+
+  drawSun();      // sits behind clouds
+  drawClouds();
+  drawMountains();
+  drawMidgroundHills();
+}
+
+// ── Sun (smiley, top-right) ───────────────────────────────────────────────
+function drawSun() {
+  // Pulled in from the right edge so clouds in the corner can pass in front.
+  const R = 24;
+  const sx = W * 0.72, sy = 88;
+  ctx.save();
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 2.4;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  ctx.fillStyle = PAL.yellow;
+
+  // Chunky ray crown — 8 triangular rays
+  const rays = [
+    [0,-R-18],[0,R+18],[-R-18,0],[R+18,0],
+    [-R*0.78,-R*0.78],[R*0.78,-R*0.78],[-R*0.78,R*0.78],[R*0.78,R*0.78],
+  ];
+  for (const [dx,dy] of rays) {
+    const ang = Math.atan2(dy,dx);
+    const tipX = sx + dx, tipY = sy + dy;
+    const bx = sx + Math.cos(ang)*R*0.95, by = sy + Math.sin(ang)*R*0.95;
+    const px = -Math.sin(ang)*6, py = Math.cos(ang)*6;
+    ctx.beginPath();
+    ctx.moveTo(tipX, tipY);
+    ctx.lineTo(bx+px, by+py);
+    ctx.lineTo(bx-px, by-py);
+    ctx.closePath();
+    ctx.fill(); ctx.stroke();
+  }
+  // Face disc
+  ctx.beginPath(); ctx.arc(sx, sy, R, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  // Eyes
+  ctx.fillStyle = PAL.ink;
+  ctx.beginPath(); ctx.arc(sx-7, sy-5, 2.6, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(sx+7, sy-5, 2.6, 0, Math.PI*2); ctx.fill();
+  // Smile
+  ctx.lineWidth = 2.6;
+  ctx.beginPath(); ctx.arc(sx, sy+3, 8, 0.2, Math.PI - 0.2); ctx.stroke();
+  // Pink cheeks
+  ctx.fillStyle = PAL.pink;
+  ctx.beginPath(); ctx.arc(sx-12, sy+4, 2.8, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(sx+12, sy+4, 2.8, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+// ── Clouds — chunky outlined puffs ────────────────────────────────────────
+let cloudData = Array.from({length:5}, (_,i)=>{
+  const r2 = rng(i*41+3);
+  return { x:r2()*W, y:36 + r2()*120, w:70 + r2()*60, speed:0.18 + r2()*0.18 };
+});
+function drawClouds() {
+  cloudData.forEach(c => {
+    if (state==='playing') c.x -= c.speed;
+    if (c.x + c.w < -20) { c.x = W + 30; c.y = 36 + Math.random()*110; }
+    drawCloud(c.x, c.y, c.w);
+  });
+}
+function drawCloud(x, y, w) {
+  const h = w * 0.46;
+  ctx.save();
+  ctx.fillStyle = PAL.cream;
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 2.4;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // Build path from a series of arc bumps
+  ctx.beginPath();
+  ctx.moveTo(x + w*0.12, y + h*0.85);
+  ctx.arc(x + w*0.18, y + h*0.55, h*0.32, Math.PI*0.55, Math.PI*1.45);
+  ctx.arc(x + w*0.36, y + h*0.30, h*0.42, Math.PI*1.15, Math.PI*1.85);
+  ctx.arc(x + w*0.58, y + h*0.22, h*0.48, Math.PI*1.10, Math.PI*1.95);
+  ctx.arc(x + w*0.80, y + h*0.32, h*0.40, Math.PI*1.25, Math.PI*0.30, false);
+  ctx.arc(x + w*0.92, y + h*0.60, h*0.32, Math.PI*1.55, Math.PI*0.55, false);
+  ctx.lineTo(x + w*0.12, y + h*0.85);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+// ── Mountains — far (snowcapped) + mid (rolling) ──────────────────────────
+function drawMountains() {
+  // Both ridges sit higher up in the canvas so the green midground band has
+  // room beneath them. Far range silhouette sits behind mid range.
+  drawRidge(FAR_RIDGE, /*baseline*/ GROUND_Y - 200, /*viewH*/ 140,
+    '#9DB4C9', 2.2, /*scroll*/ bgScrollY*0.05, FAR_SNOWCAPS);
+  drawRidge(MID_RIDGE, /*baseline*/ GROUND_Y - 180, /*viewH*/ 140,
+    '#5F7E94', 2.6, /*scroll*/ bgScrollY*0.10, null);
+}
+
+// ── Midground hills ────────────────────────────────────────────────────────
+// Green rolling band between mountains and the ground. Fills the area behind
+// the trees so the warm sky doesn't show between mountain bases and treeline.
+const MID_HILL_TOP = []; // points in 0..1 x-space, dy = vertical offset from hillTopY
+{
+  // Deterministic rolling profile combining a low-frequency sin with seeded jitter
+  const r = rng(919);
+  const N = 20;
+  for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const dy = Math.sin(t * Math.PI * 1.8) * 14 + (r() - 0.5) * 10;
+    MID_HILL_TOP.push({ x: t, dy });
+  }
+}
+function drawMidgroundHills() {
+  // Top y is above the mid-mountain baseline so even the lowest points in
+  // the wavy hill silhouette still overlap with mountains — no sky gap.
+  const hillTopY = GROUND_Y - 180;
+  const span = W;
+  const offset = ((bgScrollY * 0.18) % span + span) % span;
+  ctx.save();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (let tile = -1; tile <= 1; tile++) {
+    const x0 = tile * span - offset;
+    // Fill the green band — wavy top, flush with ground at the bottom.
+    ctx.beginPath();
+    ctx.moveTo(x0, GROUND_Y);
+    MID_HILL_TOP.forEach((p, i) => {
+      const px = x0 + p.x * span;
+      const py = hillTopY + p.dy;
+      if (i === 0) ctx.lineTo(px, py); else ctx.lineTo(px, py);
+    });
+    ctx.lineTo(x0 + span, GROUND_Y);
+    ctx.closePath();
+    const grad = ctx.createLinearGradient(0, hillTopY - 20, 0, GROUND_Y);
+    grad.addColorStop(0, '#7CA56A');
+    grad.addColorStop(1, '#4F8252');
+    ctx.fillStyle = grad;
+    ctx.fill();
+    // Hill silhouette stroke — open path along the top only.
+    ctx.beginPath();
+    MID_HILL_TOP.forEach((p, i) => {
+      const px = x0 + p.x * span;
+      const py = hillTopY + p.dy;
+      if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    });
+    ctx.strokeStyle = 'rgba(26,26,26,0.30)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// Draws an outlined mountain ridge spanning the whole canvas, wrapping
+// horizontally for parallax. `points` are in a 0..400 wide local space;
+// they're scaled to the canvas and tiled twice to wrap seamlessly.
+// The fill polygon closes against the baseline, but the stroke is drawn
+// only along the top ridge so the closing edge doesn't show as a horizontal line.
+function drawRidge(points, baseline, viewH, fill, strokeW, scroll, snowcaps) {
+  const segW = W;
+  const offset = ((scroll % segW) + segW) % segW;
+  ctx.save();
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  for (let tile = -1; tile <= 1; tile++) {
+    const x0 = tile * segW - offset;
+    // Fill polygon (closed to baseline)
+    ctx.beginPath();
+    ctx.moveTo(x0, baseline);
+    points.forEach(([px,py]) => {
+      ctx.lineTo(x0 + (px/400) * segW, baseline - (viewH - py));
+    });
+    ctx.lineTo(x0 + segW, baseline);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    // Ridge stroke — open path along the top only
+    ctx.beginPath();
+    points.forEach(([px,py], i) => {
+      const x1 = x0 + (px/400) * segW;
+      const y1 = baseline - (viewH - py);
+      if (i===0) ctx.moveTo(x1, y1); else ctx.lineTo(x1, y1);
+    });
+    ctx.strokeStyle = PAL.ink;
+    ctx.lineWidth = strokeW;
+    ctx.stroke();
+
+    // Snowcaps — small white triangle patches near peaks
+    if (snowcaps) {
+      ctx.fillStyle = '#F0F5FB';
+      ctx.strokeStyle = PAL.ink;
+      ctx.lineWidth = strokeW * 0.9;
+      for (const pts of snowcaps) {
+        ctx.beginPath();
+        for (let i=0; i<pts.length; i+=2) {
+          const sx = x0 + (pts[i]/400) * segW;
+          const sy = baseline - (viewH - pts[i+1]);
+          if (i===0) ctx.moveTo(sx, sy); else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+      }
+    }
+  }
+  ctx.restore();
+}
+
+// ── Background trees ──────────────────────────────────────────────────────
+// Two parallax layers; layer 0 (far) is darker/smaller, layer 1 (near) is
+// brighter/larger and overlaps the ground line so trees plant into the grass.
+function drawTrees(layer) {
+  const pal = layer===0
+    ? { dark:'#3B6F4A', light:'#5B8E62', trunk:'#5C4632', strokeW:2.2 }
+    : { dark:'#235437', light:'#3E7647', trunk:'#3C2A1B', strokeW:2.8 };
+  const parallax = layer===0 ? 0.25 : 0.45;
+  const span = W + 100;
+  BG_TREES.filter(t=>t.layer===layer).forEach(tree => {
+    const tx = ((tree.x - bgScrollY * parallax) % span + span) % span - 50;
+    const baseY = GROUND_Y + tree.baseOff;
+    if (tree.type==='pine') drawPine(tx, baseY, tree.w, tree.h, pal);
+    else                    drawRoundTree(tx, baseY, tree.w, tree.h, pal);
+  });
+}
+
+function drawPine(x, baseY, w, h, pal) {
+  ctx.save();
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = pal.strokeW;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // Trunk
+  ctx.fillStyle = pal.trunk;
+  ctx.beginPath();
+  ctx.rect(x - w*0.07, baseY - h*0.13, w*0.14, h*0.13);
+  ctx.fill(); ctx.stroke();
+  // Three triangle tiers, alternating dark/light
+  const tiers = [
+    { fill: pal.dark,  baseY: baseY - h*0.10, topY: baseY - h*0.46, halfW: w*0.50 },
+    { fill: pal.light, baseY: baseY - h*0.42, topY: baseY - h*0.74, halfW: w*0.42 },
+    { fill: pal.dark,  baseY: baseY - h*0.68, topY: baseY - h*1.00, halfW: w*0.32 },
+  ];
+  for (const t of tiers) {
+    ctx.beginPath();
+    ctx.moveTo(x, t.topY);
+    ctx.lineTo(x + t.halfW, t.baseY);
+    ctx.lineTo(x - t.halfW, t.baseY);
+    ctx.closePath();
+    ctx.fillStyle = t.fill; ctx.fill(); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawRoundTree(x, baseY, w, h, pal) {
+  ctx.save();
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = pal.strokeW;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+  // Trunk
+  ctx.fillStyle = pal.trunk;
+  ctx.beginPath();
+  ctx.rect(x - w*0.08, baseY - h*0.22, w*0.16, h*0.22);
+  ctx.fill(); ctx.stroke();
+  // Canopy — cluster of overlapping circles for the chunky cartoon look
+  const cy = baseY - h*0.55;
+  const r1 = w*0.36, r2 = w*0.42, r3 = w*0.30;
+  // Back/dark bubbles first
+  ctx.fillStyle = pal.dark;
+  ctx.beginPath(); ctx.arc(x - w*0.32, cy + h*0.05, r1, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x + w*0.34, cy + h*0.02, r2*0.95, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x + w*0.20, cy + h*0.20, r3, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  // Front/light bubble on top
+  ctx.fillStyle = pal.light;
+  ctx.beginPath(); ctx.arc(x - w*0.05, cy - h*0.10, r2, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x - w*0.22, cy + h*0.16, r3*0.9, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.restore();
+}
+
+// ── Draw: Ground ──────────────────────────────────────────────────────────
+// New style — bright grass cap with bumpy top edge, brown dirt body with
+// darker stripe and scattered speckles/pebbles. Plus props (flowers, tufts,
+// bushes) seeded deterministically and scrolled at the same rate as the ground.
+let groundOff = 0;
+const GRASS_CAP_H = 12;
+
+// Pre-generated ground props — each entry has a fixed x in "world space"
+// and the renderer mods by a wide span to wrap.
+const GROUND_PROPS = [];
+{
+  const r = rng(91);
+  const span = 1200;
+  let x = 30;
+  let i = 0;
+  while (x < span) {
+    const which = r();
+    let type;
+    if (which < 0.35) type = 'flower';
+    else if (which < 0.55) type = 'tuft';
+    else if (which < 0.70) type = 'mushroom';
+    else type = 'bush';
+    const color = type==='flower'
+      ? [PAL.pink, PAL.yellow, PAL.cream, PAL.purple][Math.floor(r()*4)]
+      : (type==='mushroom' ? PAL.pink : null);
+    const size = type==='bush' ? 28 + r()*16 : 12 + r()*8;
+    GROUND_PROPS.push({ x, type, color, size, seed: Math.floor(r()*9999) });
+    x += 50 + r()*90;
+    i++;
+  }
+  GROUND_PROPS.span = span;
+}
+
+function drawGround() {
+  if (state==='playing') groundOff += SCROLL_SPEED;
+  const grassY = GROUND_Y; // top of grass cap (= GROUND_Y for collision)
+  const dirtTop = GROUND_Y + GRASS_CAP_H;
+
+  // Dirt body — two-tone, lighter top half, darker bottom.
+  ctx.fillStyle = '#7A4F2E';
+  ctx.fillRect(0, dirtTop, W, H - dirtTop);
+  ctx.fillStyle = '#5C3A20';
+  ctx.fillRect(0, dirtTop + (H - dirtTop) * 0.55, W, (H - dirtTop) * 0.50);
+
+  // Speckles in dirt — fixed seeded pattern that scrolls.
+  ctx.fillStyle = '#3C2412';
+  for (let i = 0; i < 26; i++) {
+    const sx = ((i * 71 - groundOff * 0.9) % (W + 30) + W + 30) % (W + 30) - 15;
+    const sy = dirtTop + 6 + ((i * 37) % (H - dirtTop - 12));
+    const sr = 1.5 + ((i * 13) % 3);
+    ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI*2); ctx.fill();
+  }
+
+  // Small pebbles deeper in the dirt
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 1.6;
+  ctx.lineJoin = 'round';
+  for (let i = 0; i < 5; i++) {
+    const sx = ((i * 137 - groundOff * 0.9) % (W + 60) + W + 60) % (W + 60) - 30;
+    const sy = H - 14 - ((i * 23) % 8);
+    ctx.fillStyle = '#A98266';
+    ctx.beginPath(); ctx.ellipse(sx, sy, 10, 4.5, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  }
+
+  // Grass cap — a smooth, slim band with a gentle world-locked sine wave so
+  // it scrolls with the ground without each blade visibly wobbling in place.
+  ctx.fillStyle = '#4F8252';
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 2.4;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  const bumpStep = 32;
+  for (let x = -20, first = true; x <= W + 40; x += bumpStep) {
+    const worldX = x + groundOff;
+    const dy = Math.sin(worldX * 0.08) * 2.4; // small, smooth, world-locked
+    const yTop = grassY + dy;
+    if (first) { ctx.moveTo(x, yTop); first = false; }
+    else ctx.lineTo(x, yTop);
+  }
+  ctx.lineTo(W + 40, dirtTop);
+  ctx.lineTo(-20, dirtTop);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+  // Highlight band in the grass
+  ctx.strokeStyle = '#7BB07F';
+  ctx.lineWidth = 2;
+  ctx.globalAlpha = 0.5;
+  ctx.beginPath();
+  ctx.moveTo(0, grassY + GRASS_CAP_H * 0.55);
+  ctx.lineTo(W, grassY + GRASS_CAP_H * 0.55);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Decorative props (flowers, tufts, bushes, mushrooms) sitting on the grass
+  for (const p of GROUND_PROPS) {
+    const px = ((p.x - groundOff) % GROUND_PROPS.span + GROUND_PROPS.span) % GROUND_PROPS.span - 100;
+    if (px < -60 || px > W + 60) continue;
+    if (p.type === 'flower')   drawFlower(px, grassY + 2, p.color);
+    else if (p.type === 'tuft') drawGrassTuft(px, grassY + 2);
+    else if (p.type === 'mushroom') drawMushroom(px, grassY + 2);
+    else if (p.type === 'bush') drawBush(px, grassY + 2, p.size);
+  }
+}
+
+function drawFlower(x, baseY, color) {
+  ctx.save();
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 1.6;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // Stem
+  ctx.strokeStyle = '#3E7647';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(x, baseY);
+  ctx.lineTo(x, baseY - 10);
+  ctx.stroke();
+  // Petals — cluster of small circles
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 1.4;
+  ctx.fillStyle = color;
+  const petalY = baseY - 12;
+  [[-3,2],[3,2],[-2,-2],[2,-2],[0,0]].forEach(([dx,dy])=>{
+    ctx.beginPath(); ctx.arc(x+dx, petalY+dy, 2.6, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  });
+  ctx.fillStyle = PAL.yellow;
+  ctx.beginPath(); ctx.arc(x, petalY, 1.4, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawGrassTuft(x, baseY) {
+  ctx.save();
+  ctx.lineWidth = 1.8;
+  ctx.lineCap = 'round';
+  const blades = [
+    [-6, -8, '#2A4A2E'],
+    [-2, -12, '#3E7647'],
+    [2, -14, '#4F8252'],
+    [6, -11, '#3E7647'],
+    [10, -7, '#2A4A2E'],
+  ];
+  for (const [dx, dy, color] of blades) {
+    ctx.strokeStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(x + dx, baseY);
+    ctx.lineTo(x + dx*0.5, baseY + dy);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawMushroom(x, baseY, color) {
+  ctx.save();
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 1.6;
+  ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+  // Stem
+  ctx.fillStyle = PAL.cream;
+  ctx.beginPath();
+  ctx.moveTo(x - 3, baseY - 6);
+  ctx.lineTo(x - 3, baseY);
+  ctx.lineTo(x + 3, baseY);
+  ctx.lineTo(x + 3, baseY - 6);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // Cap
+  ctx.fillStyle = PAL.pink;
+  ctx.beginPath();
+  ctx.moveTo(x - 6, baseY - 6);
+  ctx.quadraticCurveTo(x, baseY - 14, x + 6, baseY - 6);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // Spots
+  ctx.fillStyle = PAL.cream;
+  ctx.beginPath(); ctx.arc(x - 2, baseY - 8, 0.9, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(x + 2, baseY - 9, 0.9, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+}
+
+function drawBush(x, baseY, size) {
+  ctx.save();
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 2.4;
+  ctx.lineJoin = 'round';
+  ctx.fillStyle = '#3E7647';
+  const w = size, h = size * 0.55;
+  ctx.beginPath();
+  ctx.moveTo(x - w*0.5, baseY);
+  ctx.quadraticCurveTo(x - w*0.55, baseY - h*0.7, x - w*0.25, baseY - h*0.85);
+  ctx.quadraticCurveTo(x, baseY - h*1.1, x + w*0.18, baseY - h*0.85);
+  ctx.quadraticCurveTo(x + w*0.5, baseY - h*0.95, x + w*0.5, baseY - h*0.5);
+  ctx.quadraticCurveTo(x + w*0.55, baseY, x + w*0.3, baseY);
+  ctx.lineTo(x - w*0.3, baseY);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+  // Highlight
+  ctx.strokeStyle = '#FFF6E5';
+  ctx.globalAlpha = 0.45;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(x - w*0.2, baseY - h*0.65);
+  ctx.quadraticCurveTo(x, baseY - h*0.85, x + w*0.18, baseY - h*0.65);
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── Draw: Obstacles ───────────────────────────────────────────────────────
+// All obstacles share one chunky-rock visual style now — based on
+// env-ground.jsx `RockObstacle`. Boulders draw the shape low + wide,
+// walls draw it tall.
+function drawObstacles() {
+  obstacles.forEach(obs => {
+    if (obs.type === 'boulder') drawBoulderCluster(obs);
+    else drawRockWall(obs);
+  });
+}
+
+function drawBoulderCluster(obs) {
+  obs.boulders.forEach((b, bi) => {
+    const bx = obs.x + b.ox;
+    const cy = GROUND_Y;
+    // Render boulder as a small rock obstacle squashed to its squish ratio.
+    const rockW = b.r * 2.2;
+    const rockH = b.r * 1.6 * b.squish + b.r * 0.4;
+    drawRockShape(bx - rockW/2, cy - rockH, rockW, rockH, obs.seed + bi * 100);
+  });
+}
+
+function drawRockWall(obs) {
+  drawRockShape(obs.x, GROUND_Y - obs.wallH, obs.wallW, obs.wallH, obs.seed);
+}
+
+// Chunky outlined rock — irregular silhouette with strata bands, cracks,
+// moss tufts on top. Built deterministically from (x,y,w,h,seed).
+function drawRockShape(x, y, w, h, seed) {
+  const r = rng(seed);
+  const inset = 3;
+  const xL = x + inset, xR = x + w - inset;
+  const yT = y + inset, yB = y + h - inset;
+
+  // Top edge points — pick from three variant silhouettes for visual variety
+  const variant = Math.floor(r() * 3);
+  let topPts;
+  if (variant === 0) {
+    topPts = [
+      [xL + 4,         yT + h*0.35],
+      [xL + w*0.18,    yT + h*0.12],
+      [xL + w*0.42,    yT],
+      [xL + w*0.68,    yT + h*0.08],
+      [xL + w*0.86,    yT + h*0.18],
+      [xR,             yT + h*0.42],
+    ];
+  } else if (variant === 1) {
+    topPts = [
+      [xL + w*0.06,    yT + h*0.50],
+      [xL + w*0.22,    yT + h*0.22],
+      [xL + w*0.48,    yT + h*0.06],
+      [xR - w*0.18,    yT],
+      [xR - w*0.04,    yT + h*0.25],
+    ];
+  } else {
+    topPts = [
+      [xL + 2,         yT + h*0.55],
+      [xL + w*0.18,    yT + h*0.30],
+      [xL + w*0.32,    yT + h*0.05],
+      [xL + w*0.58,    yT + h*0.18],
+      [xL + w*0.78,    yT],
+      [xR - 4,         yT + h*0.35],
+    ];
+  }
+
+  ctx.save();
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 3.4;
+  ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+
+  // Build the rock silhouette path.
+  ctx.beginPath();
+  ctx.moveTo(xL, yB);
+  for (const [px, py] of topPts) ctx.lineTo(px, py);
+  ctx.lineTo(xR, yB);
+  ctx.closePath();
+
+  // Base fill.
+  ctx.fillStyle = '#9A8A78';
+  ctx.fill();
+
+  // Strata bands clipped to the rock.
+  ctx.save();
+  ctx.clip();
+  const bandTops = [0.35, 0.55, 0.72, 0.86];
+  for (let i = 0; i < bandTops.length; i++) {
+    const ty = yT + h * bandTops[i];
+    ctx.fillStyle = i % 2 === 0 ? '#7E6E5E' : '#867464';
+    ctx.globalAlpha = 0.85;
+    ctx.fillRect(x, ty, w, Math.max(6, h * 0.04));
+    // Hairline beneath each band
+    ctx.globalAlpha = 0.6;
+    ctx.strokeStyle = PAL.ink;
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x, ty); ctx.lineTo(x + w, ty); ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  // Darker base lip
+  ctx.fillStyle = '#6F5F4E';
+  ctx.globalAlpha = 0.6;
+  ctx.fillRect(x, yT + h * 0.86, w, h * 0.2);
+  ctx.globalAlpha = 1;
+
+  // Highlight chip near the top edge
+  ctx.fillStyle = '#C2B5A2';
+  ctx.globalAlpha = 0.7;
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.3, yT + h * 0.04);
+  ctx.lineTo(x + w * 0.55, yT - 2);
+  ctx.lineTo(x + w * 0.5,  yT + h * 0.1);
+  ctx.closePath(); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Jagged crack
+  const crackX = x + w * 0.45;
+  ctx.strokeStyle = PAL.ink;
+  ctx.globalAlpha = 0.7;
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(crackX,        yT + h*0.12);
+  ctx.lineTo(crackX + 4,    yT + h*0.35);
+  ctx.lineTo(crackX - 4,    yT + h*0.58);
+  ctx.lineTo(crackX + 6,    yT + h*0.82);
+  ctx.stroke();
+  ctx.globalAlpha = 0.65;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x + w*0.78, yT + h*0.40);
+  ctx.lineTo(x + w*0.72, yT + h*0.60);
+  ctx.lineTo(x + w*0.82, yT + h*0.78);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+
+  // Moss tufts perched on top
+  if (w > 40) {
+    ctx.fillStyle = '#4F8252';
+    ctx.strokeStyle = PAL.ink;
+    ctx.lineWidth = 2;
+    [[0.2, 0.10], [0.6, 0.05]].forEach(([fx, fy]) => {
+      const mx = x + w * fx;
+      const my = yT + h * fy;
+      ctx.beginPath();
+      ctx.moveTo(mx,      my);
+      ctx.quadraticCurveTo(mx + 8,  my - 10, mx + 16, my);
+      ctx.quadraticCurveTo(mx + 22, my - 8,  mx + 26, my + 2);
+      ctx.closePath();
+      ctx.fill(); ctx.stroke();
+    });
+  }
+  ctx.restore();
+
+  // Outline last so it sits on top of everything.
+  ctx.beginPath();
+  ctx.moveTo(xL, yB);
+  for (const [px, py] of topPts) ctx.lineTo(px, py);
+  ctx.lineTo(xR, yB);
+  ctx.closePath();
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 3.4;
+  ctx.stroke();
+  ctx.restore();
+}
+
+// ── Draw: Climber (RadKid SVG sprites) ────────────────────────────────────
+// Sprites are 128×128, drawn at 80px on canvas. The character occupies
+// roughly y=4..124 in the viewBox; we offset so that climber.y (the waist
+// anchor used by collision & rope) lines up with the sprite's torso.
+const CLIMBER_DRAW_SIZE = 80;
+const CLIMBER_FOOT_RATIO = 124 / 128; // where feet are in the viewBox
+const CLIMBER_WAIST_RATIO = 92 / 128; // waist anchor (matches +8 offset)
+
+function pickClimberFrame() {
+  if (hitCooldown > 60) return 'hurt';
+  const moving = (keys.up || keys.down || tindeqMoving) && state === 'playing';
+  if (moving) {
+    // Alternate left/right climbing pose every ~10 frames.
+    return (Math.floor(climber.animT * 1.6) % 2 === 0) ? 'climbL' : 'climbR';
+  }
+  return 'idle';
+}
+
+function drawClimber() {
+  const c = climber;
+  const moving = (keys.up || keys.down || tindeqMoving) && state === 'playing';
+  const onGround = c.y >= GROUND_Y - 60;
+  if (moving) c.animT += 0.17;
+  else if (onGround) c.animT += 0.08;
+
+  const frameKey = pickClimberFrame();
+  const img = CLIMBER_IMG[frameKey];
+  if (!img || !img.complete || !img.naturalWidth) return;
+
+  const size = CLIMBER_DRAW_SIZE;
+  // Position so the waist anchor lands on (climber.x, climber.y + 8) —
+  // matching how rope sampling and collision logic expect the body.
+  const drawX = c.x - size / 2;
+  const drawY = c.y + 8 - size * CLIMBER_WAIST_RATIO;
+
+  // Subtle bob while moving
+  const bob = moving ? Math.sin(c.animT * 2) * 1.2 : (onGround ? Math.sin(c.animT * 2) * 0.6 : 0);
+
+  // Hit cooldown flicker — flash white while invincible
+  ctx.save();
+  if (hitCooldown > 0 && Math.floor(frameN / 4) % 2 === 0) {
+    ctx.globalAlpha = 0.7;
+  }
+  ctx.drawImage(img, drawX, drawY + bob, size, size);
+  ctx.restore();
+}
+
+// ── Draw: Rope ────────────────────────────────────────────────────────────
+function updateRope() {
+  // Record climber waist-y every ROPE_SAMPLE_FRAMES frames.
+  // Each sample represents one ROPE_PIXEL_STEP of world distance.
+  // Drawing this history traces the exact altitude path the climber travelled.
+  if (frameN % ROPE_SAMPLE_FRAMES === 0) {
+    ropePoints.unshift(climber.y + 8);
+    if (ropePoints.length > ROPE_MAX_SAMPLES) ropePoints.length = ROPE_MAX_SAMPLES;
+  }
+}
+
+function drawRope() {
+  if (!climber || ropePoints.length < 1) return;
+  const baseX = climber.x;
+  const baseY = climber.y + 8;
+
+  const buildPath = () => {
+    ctx.beginPath();
+    ctx.moveTo(baseX, baseY);
+    for (let i = 0; i < ropePoints.length; i++) {
+      ctx.lineTo(baseX - (i + 1) * ROPE_PIXEL_STEP, ropePoints[i]);
+    }
+  };
+
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  // Chunky black outline
+  buildPath();
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 6;
+  ctx.stroke();
+  // Red rope core
+  buildPath();
+  ctx.strokeStyle = '#FF3D5A';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+  // White dashed sheath pattern
+  buildPath();
+  ctx.strokeStyle = PAL.cream;
+  ctx.globalAlpha = 0.7;
+  ctx.lineWidth = 1.4;
+  ctx.setLineDash([6, 8]);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.globalAlpha = 1;
+
+  // Knot bulge at the attach point
+  ctx.fillStyle = '#FF3D5A';
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.arc(baseX, baseY, 4.5, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+
+  ctx.restore();
+}
+
+// ── Particles ─────────────────────────────────────────────────────────────
+function spawnChalkPuff(x, y) {
+  for (let i=0; i<4; i++) {
+    particles.push({ x, y, vx:(Math.random()-0.5)*2.5, vy:-1.2-Math.random()*2,
+      life:1, decay:0.055+Math.random()*0.04, r:2+Math.random()*4, color:'#d8d4c8' });
+  }
+}
+
+function updateDrawParticles() {
+  particles.forEach(p => {
+    p.x+=p.vx; p.y+=p.vy; p.vy+=0.06; p.life-=p.decay;
+    ctx.save(); ctx.globalAlpha=Math.max(0,p.life)*0.85;
+    ctx.fillStyle=p.color; ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  });
+  particles=particles.filter(p=>p.life>0);
+}
+
+// ── Flash on hit ──────────────────────────────────────────────────────────
+function triggerFlash() {
+  flashEl.style.background = 'rgba(255,61,138,0.55)';
+  setTimeout(() => { flashEl.style.background = 'rgba(255,61,138,0)'; }, 120);
+}
+
+// ── Collision ─────────────────────────────────────────────────────────────
+let hitCooldown = 0; // frames of invincibility after hit
+function checkCollision() {
+  if (hitCooldown > 0) { hitCooldown--; return; }
+  const hw = climber.w/2 - 5, hh = climber.h/2 - 8;
+  const cx = climber.x, cy = climber.y;
+
+  // Ground
+  if (cy + hh >= GROUND_Y) {
+    climber.y = GROUND_Y - hh;
+    onHit(); return;
+  }
+
+  // Obstacles
+  for (const obs of obstacles) {
+    if (obs.type === 'boulder') {
+      for (const b of obs.boulders) {
+        const bx = obs.x + b.ox;
+        const by = GROUND_Y - b.r * b.squish;
+        const dx = cx - bx, dy = cy - by;
+        const rx2 = b.r + hw, ry2 = b.r * b.squish + hh;
+        if ((dx*dx)/(rx2*rx2) + (dy*dy)/(ry2*ry2) < 1) { onHit(); return; }
+      }
+    } else {
+      // Wall AABB
+      if (cx+hw > obs.x+3 && cx-hw < obs.x+obs.wallW-3 &&
+          cy+hh > GROUND_Y - obs.wallH && cy-hh < GROUND_Y) {
+        onHit(); return;
+      }
+    }
+  }
+}
+
+function onHit() {
+  triggerFlash();
+  score = 0;
+  hitCooldown = 90; // ~1.5s invincibility
+  spawnChalkPuff(climber.x, climber.y);
+}
+
+// ── Score pops ────────────────────────────────────────────────────────────
+let scorePops2 = [];
+function addScorePop(x,y,txt){ scorePops2.push({x,y,life:1,vy:-1,txt}); }
+function drawScorePops(){
+  scorePops2.forEach(p=>{
+    ctx.save();
+    ctx.globalAlpha=p.life;
+    ctx.font='800 18px JetBrains Mono, ui-monospace, monospace';
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = PAL.ink;
+    ctx.fillStyle = PAL.yellow;
+    ctx.strokeText(p.txt, p.x, p.y);
+    ctx.fillText(p.txt, p.x, p.y);
+    ctx.restore();
+    p.y+=p.vy; p.life-=0.024;
+  });
+  scorePops2=scorePops2.filter(p=>p.life>0);
+}
+
+// ── Sequence tick ─────────────────────────────────────────────────────────
+function tickSequence() {
+  const cur = seqProgram[seqIndex];
+  // Smoothly glide guide beam toward target height
+  seqTargetH = (cur && cur.type === 'on') ? cur.height : 0;
+  beamDisplayH += (seqTargetH - beamDisplayH) * 0.04;
+
+  if (seqProgram.length === 0) {
+    if (frameN % OBS_INTERVAL === 0) spawnObstacle(); // no program → random
+    return;
+  }
+  if (!cur) return; // sequence finished — no more spawning
+
+  // Spawn one wide interval wall at the very start of each 'on' event
+  if (cur.type === 'on' && !seqEventSpawned) {
+    spawnIntervalWall(cur.duration, cur.height);
+    seqEventSpawned = true;
+  }
+
+  // Advance to next event when duration has elapsed
+  if (seconds - seqEventStartSec >= cur.duration) {
+    seqIndex++;
+    seqEventStartSec = seconds;
+    seqEventSpawned = false;
+    if (seqIndex >= seqProgram.length) {
+      seqRepeatCount++;
+      if (seqRepeatCount < seqRepeatMax) { seqIndex = 0; seqEventSpawned = false; }
+    }
+  }
+}
+
+// ── Update ────────────────────────────────────────────────────────────────
+let lastScoreFrame = 0;
+function update() {
+  frameN++;
+  bgScrollY += SCROLL_SPEED;
+
+  // Timer — real wall-clock seconds, works correctly at any display refresh rate
+  seconds = Math.floor((performance.now() - gameStartTime) / 1000);
+
+  // Climber movement — Tindeq kg → direct position, or keyboard/dpad
+  const _prevY = climber.y;
+  if (tindeqConnected) {
+    tindeqSmoothed += (tindeqKg - tindeqSmoothed) * 0.2;
+    const bBot = GROUND_Y - 12, bTop = 38;
+    climber.y = bBot - (tindeqSmoothed / 70) * (bBot - bTop) - 8;
+  } else {
+    if (keys.up)   climber.y -= MOVE_SPEED;
+    if (keys.down) climber.y += MOVE_SPEED;
+  }
+  climber.y = Math.max(30, Math.min(GROUND_Y - 20, climber.y));
+  tindeqMoving = tindeqConnected && Math.abs(climber.y - _prevY) > 0.3;
+
+  // Weight: 0 kg at ground, 70 kg at max height. Maps waist position across full range.
+  const bBot = GROUND_Y - 12, bTop = 38;
+  weight = Math.max(0, Math.min(70, Math.round((bBot - (climber.y + 8)) / (bBot - bTop) * 70)));
+
+  // Chalk when moving
+  if ((keys.up||keys.down) && frameN%8===0) spawnChalkPuff(climber.x-8, climber.y+12);
+
+  // Spawn obstacles — program-driven or random fallback
+  tickSequence();
+
+  // Move obstacles
+  obstacles.forEach(obs => {
+    obs.x -= SCROLL_SPEED;
+    if (!obs.scored && obs.x + (obs.totalW||obs.wallW||0) < climber.x - 20) {
+      obs.scored = true;
+      score++;
+      addScorePop(climber.x+20, climber.y-30, '+1');
+    }
+  });
+  obstacles = obstacles.filter(o => o.x + (o.totalW||o.wallW||100) > -60);
+
+  updateRope();
+  checkCollision();
+
+  // Update HUD
+  const m = Math.floor(seconds/60), s = seconds%60;
+  hTime.textContent = m+':'+(s<10?'0':'')+s;
+  hScore.textContent = score;
+  hHeight.textContent = weight+'kg';
+}
+
+// ── Draw: Guide beam ─────────────────────────────────────────────────────
+// Terrain-following band drawn as a single polygon so edges ramp smoothly
+// over 0.5 s of scroll distance instead of jumping vertically.
+function drawGuideBeam() {
+  if (!climber || state !== 'playing' || !showGuideBeam) return;
+  const beamH = climber.h + 22; // fixed height ≈ climber sprite visual height (66 px)
+  const rampW = Math.round(0.5 * 60 * SCROLL_SPEED); // 0.5 s of scroll distance
+
+  // Build keypoints: {x, base} where base = surface the beam sits on.
+  // GROUND_Y          → ground,  GROUND_Y - wallH → top of obstacle.
+  const pts = [{ x: 0,  base: GROUND_Y }];
+
+  const walls = obstacles
+    .filter(o => (o.type === 'wall' || o.type === 'interval') &&
+                  o.x < W + rampW && o.x + o.wallW > -rampW)
+    .sort((a, b) => a.x - b.x);
+
+  for (const w of walls) {
+    pts.push({ x: w.x - rampW,        base: GROUND_Y          }); // start rising (before wall)
+    pts.push({ x: w.x,                base: GROUND_Y - w.wallH }); // fully up at wall start
+    pts.push({ x: w.x + w.wallW,      base: GROUND_Y - w.wallH }); // start falling at wall end
+    pts.push({ x: w.x + w.wallW + rampW, base: GROUND_Y       }); // back to ground (after wall)
+  }
+
+  pts.push({ x: W, base: GROUND_Y });
+
+  // Draw filled polygon: top edge (base - beamH) left→right, bottom edge (base) right→left
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  ctx.fillStyle = PAL.teal;
+  ctx.beginPath();
+  ctx.moveTo(pts[0].x, pts[0].base - beamH);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].base - beamH);
+  for (let i = pts.length - 1; i >= 0; i--) ctx.lineTo(pts[i].x, pts[i].base);
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+// ── Draw: Height meter ────────────────────────────────────────────────────
+// Vertical ruler on the left edge of the playfield — Rad Kid style.
+// Dark translucent panel + bold white tick marks with numeric labels.
+function drawHeightMeter() {
+  if (!climber) return;
+  const panelX = 0, panelW = 58;
+  const panelTop = 12, panelBot = GROUND_Y - 6;
+  const railX = panelX + panelW - 6;
+
+  const bBot = GROUND_Y - 12;
+  const bTop = 38;
+  const indY = Math.max(bTop, Math.min(bBot, climber.y + 8));
+
+  ctx.save();
+
+  // Dark translucent panel
+  ctx.fillStyle = 'rgba(26,26,26,0.62)';
+  ctx.fillRect(panelX, panelTop, panelW, panelBot - panelTop);
+  // Cream stripe on the right edge
+  ctx.fillStyle = 'rgba(255,246,229,0.45)';
+  ctx.fillRect(panelX + panelW - 2, panelTop, 2, panelBot - panelTop);
+
+  // Center rail
+  ctx.strokeStyle = PAL.cream;
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(railX, panelTop + 6);
+  ctx.lineTo(railX, panelBot - 6);
+  ctx.stroke();
+
+  // Tick + label at every 10 m. Bigger crisp font, both outline + fill.
+  ctx.font = '800 13px JetBrains Mono, ui-monospace, monospace';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  const pxPerM = (bBot - bTop) / 70;
+  for (let m = 10; m <= 70; m += 10) {
+    const ty = bBot - m * pxPerM;
+    const tickLen = 14;
+    ctx.strokeStyle = PAL.cream;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(railX - tickLen, ty);
+    ctx.lineTo(railX, ty);
+    ctx.stroke();
+    // Outlined label — dark stroke under cream fill for crisp legibility.
+    ctx.lineWidth = 3.5;
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = PAL.ink;
+    ctx.fillStyle = PAL.cream;
+    const label = m + 'm';
+    ctx.strokeText(label, railX - tickLen - 3, ty);
+    ctx.fillText(label, railX - tickLen - 3, ty);
+  }
+
+  // Arrow indicator — yellow triangle on right side of rail
+  ctx.fillStyle = PAL.yellow;
+  ctx.strokeStyle = PAL.ink;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.moveTo(railX + 2,  indY);
+  ctx.lineTo(railX + 12, indY - 6);
+  ctx.lineTo(railX + 12, indY + 6);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+  ctx.restore();
+}
+
+// ── Draw ──────────────────────────────────────────────────────────────────
+function draw() {
+  ctx.clearRect(0,0,W,H);
+  drawSky();
+  drawTrees(0);         // far trees
+  drawTrees(1);         // near trees
+  drawGround();
+  drawObstacles();
+  drawGuideBeam();
+  drawRope();
+  drawClimber();
+  updateDrawParticles();
+  drawScorePops();
+  drawHeightMeter();
+}
+
+// ── Loop ──────────────────────────────────────────────────────────────────
+function loop() {
+  if (state==='playing') { update(); draw(); }
+  else if (state==='idle') {
+    ctx.clearRect(0,0,W,H);
+    drawSky();
+    drawTrees(0); drawTrees(1);
+    drawGround();
+    if (climber) {
+      climber.y = GROUND_Y - 80 + Math.sin(Date.now()*0.0014)*20;
+      drawRope();
+      drawClimber();
+    }
+  }
+  updateDebug();
+  requestAnimationFrame(loop);
+}
+
+// ── UI ────────────────────────────────────────────────────────────────────
+function returnToMenu() {
+  if (state !== 'playing') return;
+  state = 'idle';
+  showGameOver();
+}
+
+function showGameOver() {
+  overlay.style.display='flex';
+  lastEl.style.display='block';
+  const m=Math.floor(seconds/60), s=seconds%60;
+  lastEl.innerHTML='TIME: '+m+':'+(s<10?'0':'')+s+' &nbsp; SCORE: '+score;
+  if (score > best) best = score;
+  bestEl.textContent = 'BEST: '+best;
+  startBtn.textContent = '▶ SEND IT!';
+}
+
+function startGame() {
+  overlay.style.display='none';
+  initGame();
+  state='playing';
+}
+
+startBtn.addEventListener('click',e=>{e.stopPropagation();startGame();});
+startBtn.addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();startGame();},{passive:false});
+
+// ── Keys ──────────────────────────────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.code==='Escape'){returnToMenu();return;}
+  if(e.code==='ArrowUp'){e.preventDefault();keys.up=true;}
+  if(e.code==='ArrowDown'){e.preventDefault();keys.down=true;}
+});
+document.addEventListener('keyup',e=>{
+  if(e.code==='ArrowUp')keys.up=false;
+  if(e.code==='ArrowDown')keys.down=false;
+});
+function setupBtn(id,key){
+  const btn=document.getElementById(id);
+  ['touchstart','mousedown'].forEach(ev=>btn.addEventListener(ev,e=>{
+    if(ev==='touchstart')e.preventDefault(); keys[key]=true; btn.classList.add('pressed');
+  },{passive:false}));
+  ['touchend','mouseup','mouseleave'].forEach(ev=>btn.addEventListener(ev,e=>{
+    if(ev==='touchend')e.preventDefault(); keys[key]=false; btn.classList.remove('pressed');
+  },{passive:false}));
+}
+setupBtn('btn-up','up');
+setupBtn('btn-down','down');
+const pauseBtn = document.getElementById('btn-pause');
+['touchstart','mousedown'].forEach(ev => pauseBtn.addEventListener(ev, e => {
+  if (ev==='touchstart') e.preventDefault();
+  pauseBtn.classList.add('pressed');
+  returnToMenu();
+  setTimeout(()=>pauseBtn.classList.remove('pressed'), 150);
+}, {passive:false}));
+
+// ── Tindeq button ─────────────────────────────────────────────────────────
+const tindeqBtn = document.getElementById('tindeq-btn');
+if (!navigator.bluetooth) {
+  tindeqBtn.disabled = true;
+  tindeqBtn.title = 'Web Bluetooth not available in this browser';
+} else {
+  tindeqBtn.addEventListener('click', connectTindeq);
+  tindeqBtn.addEventListener('touchstart', e => { e.preventDefault(); connectTindeq(); }, {passive:false});
+}
+
+// ── Debug panel ───────────────────────────────────────────────────────────
+const debugPanel  = document.getElementById('debug-panel');
+const debugInner  = document.getElementById('debug-inner');
+const debugToggle = document.getElementById('debug-toggle');
+debugToggle.addEventListener('change', () => {
+  debugPanel.style.display = debugToggle.checked ? 'block' : 'none';
+});
+
+// Guide-beam toggle (off by default)
+let showGuideBeam = false;
+const beamToggle = document.getElementById('beam-toggle');
+beamToggle.addEventListener('change', () => { showGuideBeam = beamToggle.checked; });
+
+function updateDebug() {
+  if (!debugToggle.checked) return;
+  debugInner.innerHTML =
+    'TINDEQ RAW&nbsp;&nbsp;: ' + tindeqKg.toFixed(2) + ' kg<br>' +
+    'TINDEQ SMOOTH: ' + tindeqSmoothed.toFixed(2) + ' kg<br>' +
+    'CONNECTED&nbsp;&nbsp;&nbsp;: ' + (tindeqConnected ? '✓ yes' : '✗ no');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+initGame();
+state='idle';
+loop();
+</script>
+</body>
+</html>
