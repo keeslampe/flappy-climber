@@ -5,7 +5,7 @@ import type { Anchor, World } from '../game/types';
 const STATE_COLORS = {
   next:   { accent: PALETTE.teal,   badge: PALETTE.teal,   icon: 'arrow' as const },
   hit:    { accent: '#4CC66B',       badge: '#4CC66B',       icon: 'check' as const },
-  locked: { accent: '#9A9A95',       badge: '#7A7A75',       icon: 'lock'  as const },
+  locked: { accent: '#C7CDD4',       badge: '#7A7A75',       icon: 'lock'  as const },
 };
 
 interface CarabinerProps {
@@ -51,6 +51,26 @@ function StateBadge({ icon, color, x = 58, y = 14 }: BadgeProps) {
           </g>
         )}
       </g>
+    </g>
+  );
+}
+
+// Numbered badge sitting where the old state badge did — each clip carries the
+// seconds-left-in-its-event number it was assigned at spawn (8,7,…,1 over a pull).
+function NumberBadge({ value, x = 60, y = 14 }: { value: number; x?: number; y?: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`}>
+      <circle cx="0" cy="0" r="12.5" fill={PALETTE.teal} stroke={PALETTE.ink} strokeWidth="2.6" />
+      <text
+        x="0"
+        y="0.5"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fill={PALETTE.ink}
+        style={{ font: '800 15px JetBrains Mono, ui-monospace, monospace' }}
+      >
+        {value}
+      </text>
     </g>
   );
 }
@@ -138,7 +158,6 @@ export function BoltAnchorVisual({ anchor, groundY }: BoltAnchorProps) {
 export function BoltAnchorSvg({ anchor }: { anchor: Anchor }) {
   const size = 92;
   const colors = STATE_COLORS[anchor.state];
-  const dimmed = anchor.state === 'locked';
   const displayWidth = size * (80 / 130);
 
   // Center the anchor on its x, with the clip point (waistY) at the lower carabiner
@@ -155,7 +174,7 @@ export function BoltAnchorSvg({ anchor }: { anchor: Anchor }) {
         </g>
       )}
 
-      <g opacity={dimmed ? 0.6 : 1}>
+      <g>
         <g stroke={PALETTE.ink} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round">
           <path d="M28 12 Q40 6 52 12 Q56 22 48 30 L32 30 Q24 22 28 12 Z" fill="#B9C0C8" />
           <circle cx="40" cy="16" r="5" fill="#7E858E" />
@@ -164,7 +183,7 @@ export function BoltAnchorSvg({ anchor }: { anchor: Anchor }) {
           <circle cx="40" cy="27" r="5.5" fill="none" stroke={PALETTE.ink} strokeWidth="3" />
         </g>
 
-        <Carabiner centerX={40} centerY={40} radiusX={8} radiusY={11} gate="#C7CDD4" dimmed={dimmed} />
+        <Carabiner centerX={40} centerY={40} radiusX={8} radiusY={11} gate="#C7CDD4" />
         <path
           d="M33 50 Q31 64 33 78 L47 78 Q49 64 47 50 Q40 47 33 50 Z"
           fill={PALETTE.pink}
@@ -173,10 +192,15 @@ export function BoltAnchorSvg({ anchor }: { anchor: Anchor }) {
           strokeLinejoin="round"
         />
         <path d="M36 54 L36 74 M44 54 L44 74" stroke={PALETTE.ink} strokeWidth="1.6" opacity="0.4" />
-        <Carabiner centerX={40} centerY={90} radiusX={9} radiusY={13} gate={colors.accent} dimmed={dimmed} />
+        <Carabiner centerX={40} centerY={90} radiusX={9} radiusY={13} gate={colors.accent} />
       </g>
 
-      <StateBadge icon={colors.icon} color={colors.badge} x={60} y={14} />
+      {/* Status badge: green check once clipped, otherwise the clip's fixed number */}
+      {anchor.state === 'hit' ? (
+        <StateBadge icon="check" color="#4CC66B" x={60} y={14} />
+      ) : (
+        anchor.label !== null && <NumberBadge value={anchor.label} x={60} y={14} />
+      )}
     </g>
   );
 }

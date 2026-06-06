@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { WORLD_WIDTH } from './game/constants';
 import { parseSequence } from './game/sequence';
 import { tickWorld } from './game/tick';
+import type { SeqEvent } from './game/types';
 import { createInitialWorld, getGroundY, resetForNewGame } from './game/world';
 
 import { Climber } from './components/Climber';
@@ -55,6 +56,7 @@ export default function App() {
   const tindeq = useTindeq();
   const [seqText, setSeqText] = useState(DEFAULT_SEQ);
   const [showDebug, setShowDebug] = useState(true);
+  const [showTargetLine, setShowTargetLine] = useState(true);
   const [showOverlay, setShowOverlay] = useState(true);
   const [bestScore, setBestScore] = useState(0);
   const [lastRun, setLastRun] = useState<{ score: number; seconds: number } | null>(null);
@@ -63,8 +65,17 @@ export default function App() {
     const world = worldRef.current;
     resetForNewGame(world, logicalHeight);
     const parsed = parseSequence(seqText);
-    world.sequenceProgram = parsed.events;
-    world.sequenceRepeatMax = parsed.repeatTimes;
+    if (parsed.events.length > 0) {
+      // Always begin with a 5 second rest, then run the repeat-expanded program
+      // once (so the intro rest happens only at the very start, not each repeat).
+      const expanded: SeqEvent[] = [{ type: 'rest', duration: 5 }];
+      for (let repeat = 0; repeat < parsed.repeatTimes; repeat++) expanded.push(...parsed.events);
+      world.sequenceProgram = expanded;
+      world.sequenceRepeatMax = 1;
+    } else {
+      world.sequenceProgram = parsed.events;
+      world.sequenceRepeatMax = parsed.repeatTimes;
+    }
     world.status = 'playing';
     setShowOverlay(false);
   }, [logicalHeight, seqText]);
@@ -126,7 +137,7 @@ export default function App() {
         <Particles world={world} />
         <ScorePops world={world} />
         <HeightMeter world={world} groundY={groundY} />
-        {showDebug && <ProgramTargetLine world={world} groundY={groundY} />}
+        {showDebug && showTargetLine && <ProgramTargetLine world={world} groundY={groundY} />}
       </svg>
 
       <HeadsUpDisplay seconds={world.seconds} score={world.score} weight={world.weight} />
@@ -136,6 +147,8 @@ export default function App() {
           raw={tindeq.readingRef.current}
           smooth={world.tindeqSmoothedKilograms}
           connected={tindeq.connected}
+          showTargetLine={showTargetLine}
+          setShowTargetLine={setShowTargetLine}
         />
       )}
 

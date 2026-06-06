@@ -14,13 +14,14 @@ export const ANCHOR_CLIP_X_TOLERANCE = 10;
 // The ruler, the target marker, the force-driven climber position, and the bolt
 // anchors ALL use this single mapping (see waistYForHeight) so a given program
 // height lines up everywhere.
-export const HEIGHT_SCALE_MAX = 70;
+export const HEIGHT_SCALE_MAX = 50;
 export const HEIGHT_METER_TOP_OFFSET = 38;
 export const HEIGHT_METER_BOTTOM_OFFSET = 12;
 
 export const WALL_SEED = 5;
 export const WALL_HEADROOM_PIXELS = 28;        // rock always rises this far above an elevated clip
 export const WALL_PEAK_AMPLITUDE_PIXELS = 72;  // extra rolling peak height layered on for variation
+export const WALL_FADE_UNITS = 6;              // target height below which the wall fades to bare ground
 export const ROPE_SAMPLE_FRAMES = 2;
 export const ROPE_PIXEL_STEP = SCROLL_SPEED * ROPE_SAMPLE_FRAMES;
 export const ROPE_MAX_SAMPLES = 52;

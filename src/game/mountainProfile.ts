@@ -1,6 +1,7 @@
 import {
   ANCHOR_SPACING_PIXELS,
   SCROLL_SPEED,
+  WALL_FADE_UNITS,
   WALL_HEADROOM_PIXELS,
   WALL_PEAK_AMPLITUDE_PIXELS,
 } from './constants';
@@ -57,6 +58,42 @@ export function targetHeightAtDistance(world: World, pixelsAhead: number): numbe
     }
   }
 
+  return 0;
+}
+
+// Seconds remaining in the workout event covering a look-ahead position, rounded
+// up so the current second counts. Used to give each clip a FIXED label at spawn
+// time — e.g. an 8s pull produces clips labelled 8,7,…,1. Returns 0 when there is
+// no program loaded. Mirrors the forward walk in targetHeightAtDistance.
+export function eventSecondsRemainingAtDistance(world: World, pixelsAhead: number): number {
+  const program = world.sequenceProgram;
+  if (program.length === 0) return 0;
+
+  const pixelsPerEvent = program.map((event) => event.duration * 60 * SCROLL_SPEED);
+  const totalProgramPixels = pixelsPerEvent.reduce((sum, pixels) => sum + pixels, 0);
+  if (totalProgramPixels <= 0) return 0;
+
+  const currentEvent = world.sequenceProgram[world.sequenceIndex];
+  if (!currentEvent) return 0;
+
+  let pixelsIntoProgram = world.backgroundScrollY - world.sequenceEventStartScroll;
+  for (let index = 0; index < world.sequenceIndex; index++) {
+    pixelsIntoProgram += pixelsPerEvent[index];
+  }
+  const totalRepeatPixels = totalProgramPixels * world.sequenceRepeatMax;
+  const lookAhead = Math.min(pixelsIntoProgram + pixelsAhead, totalRepeatPixels - 1);
+
+  let cursor = 0;
+  for (let repeat = 0; repeat < world.sequenceRepeatMax; repeat++) {
+    for (let eventIndex = 0; eventIndex < program.length; eventIndex++) {
+      const eventPixels = pixelsPerEvent[eventIndex];
+      if (lookAhead < cursor + eventPixels) {
+        const pixelsRemaining = cursor + eventPixels - lookAhead;
+        return Math.max(1, Math.ceil(pixelsRemaining / (60 * SCROLL_SPEED)));
+      }
+      cursor += eventPixels;
+    }
+  }
   return 0;
 }
 
@@ -203,10 +240,8 @@ export function sampleWallCrest(
     const pixelsAhead = x - world.climber.x;
 
     // Smooth envelope of the workout target (full height across each plateau,
-    // smoothstepping down into the rest valley), mapped to the SAME waist y the
-    // clips and the target marker use.
+    // smoothstepping down into the rest valley).
     const baseUnits = crestBaseMeters(world, pixelsAhead);
-    const baseY = waistYForHeight(baseUnits, groundY);
 
     // Terrain-locked position so peaks travel with the wall, not the viewport.
     const terrainPosition = world.backgroundScrollY + x;
@@ -219,8 +254,13 @@ export function sampleWallCrest(
         0.30 * rollingNoise(terrainPosition, 232, 1000) +
         0.15 * rollingNoise(terrainPosition, 30, 7000));
 
-    const rawY = baseY - WALL_HEADROOM_PIXELS - peakPixels;
-    const y = Math.max(24, Math.min(groundY - 6, rawY));
+    // Fade the whole wall down to the ground line as the target vanishes: a 0kg
+    // (rest) target shows no mountain — just the ground — while a pull rises with
+    // headroom + peaks above the clip line. Presence blends the crest between them.
+    const presence = smoothstep(baseUnits / WALL_FADE_UNITS);
+    const wallTopY = waistYForHeight(baseUnits, groundY) - WALL_HEADROOM_PIXELS - peakPixels;
+    const rawY = groundY + (wallTopY - groundY) * presence;
+    const y = Math.max(24, Math.min(groundY, rawY));
     points.push({ x, y });
   }
   return points;

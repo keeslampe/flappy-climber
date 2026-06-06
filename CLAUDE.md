@@ -7,69 +7,75 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 npm install
 npm run dev        # Vite dev server on port 3000
-npm run build      # Type-check + production bundle to dist/
+npm run build      # Type-check (tsc -b) + production bundle to dist/
 npm run preview    # Serve the production build
 ```
 
-The previous canvas-only single-file build is preserved in [`archive/flappy_climber.html`](archive/flappy_climber.html) for reference.
+There is no test or lint script — `npm run build` is the only gate (it type-checks
+in strict mode). Verify behaviour by running the app, not by unit tests. The previous
+canvas-only single-file build is preserved in `archive/flappy_climber.html`.
 
 ## Coding rules
 
-- **No abbreviations** in code or file names. Write the full word every time — `width` not `w`, `height` not `h`, `obstacle` not `obs`, `radius` not `r`, `velocity` not `vel`, `background` not `bg`, `sequence` not `seq`, `offset` not `off`, `number` not `n` or `N`, `command` not `cmd`, `response` not `res`, `control` not `ctrl`, `characteristic` not `char`. Standard SI units (`kg`) and universally-known SVG attribute names (`cx`, `cy`, `rx`, `ry`) are fine.
-- **Visual assets live in `src/visual/`**. Pure SVG drawing components — ones that have no game logic and just render markup — belong in `src/visual/` so they are easy to swap out. Components with hooks, computed state, or interactive behaviour stay in `src/components/`.
+- **No abbreviations** in code or file names. Write the full word every time — `width`
+  not `w`, `height` not `h`, `radius` not `r`, `velocity` not `vel`, `background` not
+  `bg`, `sequence` not `seq`, `offset` not `off`, `command` not `cmd`, `response` not
+  `res`, `characteristic` not `char`. Standard SI units (`kg`) and universal SVG
+  attribute names (`cx`, `cy`, `rx`, `ry`) are fine.
+- **`src/visual/` vs `src/components/`**: pure SVG art with no game logic (just renders
+  markup) lives in `src/visual/` so it is easy to swap out. Anything with hooks,
+  computed state, or interactivity lives in `src/components/`.
 - **Always ask to commit** after completing all changes in a session.
+- Some `src/visual` / `src/components` files are unused scratch/design pieces (e.g.
+  `Environment*`, `*Design`, `GroundBase`). **`App.tsx` is the source of truth for what
+  is actually rendered** — check its layer stack before assuming a component is live.
+
+## The game
+
+A climbing **trainer**, not a dodge game. The world scrolls left at a fixed rate; the
+climber is pinned at `x = 90`. Grip force (Tindeq) or arrow keys move the climber
+vertically. A workout program (the DSL) drives a generative rock wall and a stream of
+bolt-anchor "clips" at target heights — match your height as a clip passes to clip it
+(`score++`, "CLIP!" pop). **There is no fail state**: a miss is just a miss, no penalty.
 
 ## Stack
 
-- **Vite + React 18 + TypeScript** (strict). No CSS framework — plain CSS in [src/index.css](src/index.css).
-- **All rendering is SVG/DOM**, not canvas. Game state mutates in a `useRef` to avoid React re-render storms; a tick counter in `useState` schedules a redraw each animation frame.
-- **Web Bluetooth** for the Tindeq Progressor sensor lives in [`useTindeq`](src/hooks/useTindeq.ts).
+- **Vite + React 18 + TypeScript** (strict). No CSS framework — plain CSS in
+  `src/index.css`.
+- **All rendering is SVG/DOM**, never canvas. Game state mutates inside a `useRef`
+  (`worldRef`) to avoid re-render storms; a `useState` tick counter forces one redraw
+  per animation frame.
+- **Web Bluetooth** to the Tindeq Progressor force sensor lives in
+  `src/hooks/useTindeq.ts`; the kg reading drives the climber's vertical position.
 
-## Architecture
+## Fixed-timestep loop
 
-```
-src/
-  App.tsx                  — root, scaffolds the SVG world + DOM HUD/overlays
-  index.css                — global styles (HUD pills, menu, dpad, etc.)
-  game/
-    constants.ts           — WORLD_WIDTH, GROUND_OFFSET_FROM_BOTTOM, MOVE_SPEED, PALETTE, BLE UUIDs
-    types.ts               — World, Climber, Obstacle, Particle, Cloud, SeqEvent
-    randomNumberGenerator.ts — Mulberry32 seeded PRNG (used everywhere art is procedural)
-    world.ts               — createInitialWorld, resetForNewGame, getGroundY
-    tick.ts                — tickWorld() — physics, scrolling, obstacle move, collision, particles
-    obstacles.ts           — random + interval obstacle spawning
-    sequence.ts            — workout DSL parser (X seconds rest / on Z height / repeat V times)
-    collision.ts           — ellipse vs AABB hit testing
-  hooks/
-    useGameLoop.ts         — requestAnimationFrame loop with cleanup
-    useKeyboard.ts         — arrow keys + Escape → world.keysUp/keysDown + menu
-    useTindeq.ts           — Web Bluetooth connect + measurement notifications
-  visual/                  — pure SVG art; no game logic; easy to replace
-    Sky.tsx, Sun.tsx, Clouds.tsx
-    Mountains.tsx, MidgroundHills.tsx, Trees.tsx
-    Rope.tsx, Particles.tsx, ScorePops.tsx
-    climber/               — one tsx per SVG frame; pasted from claude-design JSX assets
-  components/
-    Climber.tsx            — picks RadKid frame (idle / climbL / climbR / hurt)
-    Ground.tsx             — grass cap + dirt body + speckles + scattered flowers/bushes/mushrooms
-    Obstacles.tsx          — RockShape (wall + boulder) with strata bands, cracks, moss
-    GuideBeam.tsx          — terrain-following beam, toggleable from the menu
-    HeightMeter.tsx        — left-side ruler with outlined 10/20/.../70m labels
-    HeadsUpDisplay.tsx     — TIME / SCORE / KG pills
-    DirectionalPad.tsx     — hold buttons + menu tap button
-    Overlay.tsx            — start menu / game-over screen
-    DebugPanel.tsx         — Tindeq raw/smoothed readout
-```
+`useGameLoop` reports real `deltaSeconds` each animation frame. `App.tsx` accumulates it
+and runs `tickWorld` in fixed **1/60 s** steps (clamped against a backlog spiral), then
+renders once per frame. This makes motion and the workout timer run at **real time
+regardless of display refresh rate** — do not reintroduce per-frame motion that assumes
+60 fps at the loop level. Inside `tick.ts` everything is still expressed per step (e.g.
+`SCROLL_SPEED` px/step); the fixed timestep is what keeps that real-time.
 
-## Game state machine
+## The single height scale (important)
 
-`world.status` is `'idle'` or `'playing'`. `tickWorld()` is a no-op when not `'playing'`.
+Every vertical position goes through one mapping so they line up on screen. **Do not
+add a second scale.** `world.ts` owns it:
 
-A collision resets `score = 0` and starts a 90-frame invincibility window (climber sprite uses the **hurt** frame for the first 30 of those, then flickers). The game never truly "ends"; pressing Escape, tapping ☰, or letting the sequence finish returns to the menu via `returnToMenu()`.
+- `waistYForHeight(value, groundY)` maps a program height `0..HEIGHT_SCALE_MAX` (kg, set
+  to 50) to the climber's waist pixel `y`, between `HEIGHT_METER_TOP_OFFSET` (38) and
+  `groundY - HEIGHT_METER_BOTTOM_OFFSET` (12). `heightForWaistY` is the inverse.
+- Used by: the climber's force-driven position and the weight HUD (`tick.ts`), the ruler
+  ticks + teal target marker (`HeightMeter.tsx`), the bolt anchors (`anchors.ts`), and
+  the wall crest (`mountainProfile.ts`). The waist anchor is `climber.y + 8`.
 
-## Workout DSL
+Coordinates: the SVG renders into a logical `WORLD_WIDTH (420) × logicalHeight` space
+(`logicalHeight` from viewport aspect), stretched with `preserveAspectRatio="none"`.
+`groundY = logicalHeight - GROUND_OFFSET_FROM_BOTTOM (60)`.
 
-Same syntax as the canvas build:
+## Workout DSL & the program clock
+
+`sequence.ts` parses (case-insensitive):
 
 ```
 X seconds rest
@@ -77,12 +83,53 @@ Y seconds on Z height
 repeat this V times
 ```
 
-If the textarea is empty, falls back to random `spawnObstacle()` every `OBSTACLE_INTERVAL` frames.
+`App.tsx` `startGame` expands the repeats into one flat program and **prepends a single
+5 s rest** (so the intro rest runs once, `sequenceRepeatMax = 1`). Empty textarea → no
+program; anchors then spawn on a fixed interval with a seeded rolling crest.
 
-## Coordinates
+The program advances on the **continuous scroll position**, not wall-clock seconds:
+`sequenceEventStartScroll` marks the scroll offset where the current event began, and an
+event spans `duration * 60 * SCROLL_SPEED` pixels. This is what keeps the wall crest
+gliding smoothly instead of snapping once per second. `world.seconds` is wall-clock and
+only feeds the TIME HUD.
 
-The SVG renders into a logical **WORLD_WIDTH × logicalHeight** coordinate space (`WORLD_WIDTH = 420`, `logicalHeight` derived from viewport aspect ratio). `preserveAspectRatio="none"` stretches that to fill the viewport. `GROUND_Y = logicalHeight - 60`. 1 m of climber height = 4 px. Waist anchor (`climber.y + 8`) is shared by collision, rope sampling, and the height-meter indicator.
+## Mountain / wall profile (`mountainProfile.ts`)
+
+The generative wall and the anchors are both derived from the program here:
+
+- `targetHeightAtDistance` — sharp program target at a look-ahead distance; used by
+  `spawnAnchor`.
+- `sharpTargetAtDistance` — sharp target across past/future with repeat-wrap and
+  start/end bounds; used by the debug route line.
+- `crestBaseMeters` — a **smooth envelope**: full pull height across each "on" plateau
+  (extended one clip-spacing past the pull so the end-of-pull clip keeps rock behind
+  it), smoothstepping down into the rest valley.
+- `sampleWallCrest` — builds the crest polygon. The crest sits a fixed pixel headroom +
+  rolling value-noise peaks above the clip line, and **fades fully to the ground line as
+  the target drops to 0** (rest = bare ground, no mountain), blended via `presence`.
+
+Anchors (`anchors.ts`): spawn every `ANCHOR_SPAWN_INTERVAL` steps (1 s →
+`ANCHOR_SPACING_PIXELS` apart) at the sharp target height; the first rest clip right
+after a pull is lifted to the pull height. States are `locked | next | hit`; only
+`next` shows a pulsing ring (no badges) and the lower carabiner gate is tinted by state.
+
+## State machine
+
+`world.status` is `'idle'` or `'playing'`; `tickWorld` is a no-op unless `'playing'`.
+The game never truly "ends" — Escape, the ☰ button, or the program finishing calls
+`returnToMenu()`. A clip increments `score` and pushes a "CLIP!" score pop; there is no
+collision, score reset, hurt frame, or invincibility (all removed).
+
+## Procedural art
+
+`randomNumberGenerator.ts` is a Mulberry32 seeded PRNG used everywhere art is
+procedural (wall texture, mountains, value-noise crest peaks) so output is deterministic
+and scrolls with the terrain rather than swimming.
 
 ## Debugging
 
-In dev (`import.meta.env.DEV`), the live world is exposed as `window.__world` so you can inspect / mutate it from the console.
+In dev (`import.meta.env.DEV`) the live world is exposed as `window.__world` to inspect
+or mutate from the console. The on-screen `DebugPanel` (on by default) shows the Tindeq
+readout and a **TARGET LINE** toggle for the `ProgramTargetLine` — a debug route showing
+the exact program target height over past → present → future with a `target X, Ys`
+countdown.

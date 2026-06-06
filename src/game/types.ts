@@ -14,6 +14,11 @@ export interface Anchor {
   waistY: number;
   state: 'locked' | 'next' | 'hit';
   seed: number;
+  // Fixed number shown on the clip: seconds remaining in its workout event at the
+  // moment it spawned (an 8s pull yields 8,7,…,1). The pull→rest boundary clip that
+  // sits at the pull height is labelled 0 (you've reached the top). null = no badge
+  // (e.g. when there's no program).
+  label: number | null;
 }
 
 export interface Particle {
