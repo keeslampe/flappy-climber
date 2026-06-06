@@ -11,6 +11,7 @@ import { Ground } from './components/Ground';
 import { HeadsUpDisplay } from './components/HeadsUpDisplay';
 import { HeightMeter } from './components/HeightMeter';
 import { Overlay } from './components/Overlay';
+import { ProgramTargetLine } from './components/ProgramTargetLine';
 import { BoltAnchors } from './visual/BoltAnchor';
 import { ClimbingWall } from './visual/ClimbingWall';
 import { Clouds } from './visual/Clouds';
@@ -112,6 +113,7 @@ export default function App() {
         <Particles world={world} />
         <ScorePops world={world} />
         <HeightMeter world={world} groundY={groundY} />
+        {showDebug && <ProgramTargetLine world={world} groundY={groundY} />}
       </svg>
 
       <HeadsUpDisplay seconds={world.seconds} score={world.score} weight={world.weight} />

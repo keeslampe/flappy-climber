@@ -59,6 +59,41 @@ export function targetHeightAtDistance(world: World, pixelsAhead: number): numbe
   return 0;
 }
 
+// Sharp program target height (metres) at a look-ahead distance in pixels, where
+// negative = behind the climber (past) and positive = ahead (upcoming). Wraps
+// across identical repeats and returns 0 outside the program's start/end bounds.
+// Used by the debug route line to show the whole target staircase over time.
+export function sharpTargetAtDistance(world: World, pixelsAhead: number): number {
+  const program = world.sequenceProgram;
+  if (program.length === 0) return 0;
+
+  const pixelsPerEvent = program.map((event) => event.duration * 60 * SCROLL_SPEED);
+  const totalProgramPixels = pixelsPerEvent.reduce((sum, pixels) => sum + pixels, 0);
+  if (totalProgramPixels <= 0) return 0;
+
+  // Position within the current iteration, then make it absolute across repeats.
+  let withinIteration = world.backgroundScrollY - world.sequenceEventStartScroll;
+  for (let index = 0; index < world.sequenceIndex; index++) {
+    withinIteration += pixelsPerEvent[index];
+  }
+  const absolute =
+    world.sequenceRepeatCount * totalProgramPixels + withinIteration + pixelsAhead;
+
+  // Before the program starts or after it ends → ground level.
+  if (absolute < 0 || absolute >= totalProgramPixels * world.sequenceRepeatMax) return 0;
+
+  const cyclePosition = ((absolute % totalProgramPixels) + totalProgramPixels) % totalProgramPixels;
+  let cursor = 0;
+  for (let index = 0; index < program.length; index++) {
+    if (cyclePosition < cursor + pixelsPerEvent[index]) {
+      const event = program[index];
+      return event.type === 'on' ? event.height : 0;
+    }
+    cursor += pixelsPerEvent[index];
+  }
+  return 0;
+}
+
 // Smooth value-noise: interpolate seeded random values at integer cells along a
 // terrain-locked axis so the result rolls smoothly and scrolls with the wall.
 // Returns 0..1.
