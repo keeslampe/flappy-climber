@@ -1,4 +1,5 @@
 import {
+  ANCHOR_SPACING_PIXELS,
   SCROLL_SPEED,
   WALL_HEADROOM_PIXELS,
   WALL_PEAK_AMPLITUDE_PIXELS,
@@ -168,10 +169,13 @@ function crestBaseMeters(world: World, pixelsAhead: number): number {
     const event = program[index];
     const height = event.type === 'on' ? event.height : 0;
     if (height <= 0) continue;
+    // Hold the plateau one clip-spacing past the pull's end so the end-of-pull
+    // clip (lifted to the pull height in spawnAnchor) keeps rock behind it.
+    const effectiveEnd = end + ANCHOR_SPACING_PIXELS;
     const distanceOutside = circularDistanceToInterval(
       cyclePosition,
       start,
-      end,
+      effectiveEnd,
       totalProgramPixels,
     );
     const skirt = 1 - smoothstep(distanceOutside / CREST_RAMP_PIXELS); // 1 inside → 0 over ramp

@@ -5,7 +5,8 @@ export const GROUND_OFFSET_FROM_BOTTOM = 60;
 
 export const MOVE_SPEED = 3.0;
 export const SCROLL_SPEED = 1.5;
-export const ANCHOR_SPAWN_INTERVAL = 90;
+export const ANCHOR_SPAWN_INTERVAL = 60; // fixed steps between anchor spawns (60/sec → 1s)
+export const ANCHOR_SPACING_PIXELS = ANCHOR_SPAWN_INTERVAL * SCROLL_SPEED; // scroll distance between clips
 export const ANCHOR_CLIP_HEIGHT_TOLERANCE = 14;
 export const ANCHOR_CLIP_X_TOLERANCE = 10;
 // Height/force meter geometry. The climber's waist spans heights 0..HEIGHT_SCALE_MAX
