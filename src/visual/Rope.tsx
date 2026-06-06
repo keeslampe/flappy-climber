@@ -18,10 +18,10 @@ export function Rope({ world }: Props) {
   }
   return (
     <g strokeLinecap="round" strokeLinejoin="round" fill="none">
-      <path d={pathData} stroke={PALETTE.ink} strokeWidth={6} />
-      <path d={pathData} stroke="#FF3D5A" strokeWidth={4} />
-      <path d={pathData} stroke={PALETTE.cream} strokeWidth={1.4} strokeDasharray="6 8" opacity={0.7} />
-      <circle cx={baseX} cy={baseY} r={4.5} fill="#FF3D5A" stroke={PALETTE.ink} strokeWidth={2.4} />
+      <path d={pathData} stroke={PALETTE.ink} strokeWidth={3.6} />
+      <path d={pathData} stroke="#FF3D5A" strokeWidth={2.2} />
+      <path d={pathData} stroke={PALETTE.cream} strokeWidth={0.9} strokeDasharray="5 7" opacity={0.7} />
+      <circle cx={baseX} cy={baseY} r={3} fill="#FF3D5A" stroke={PALETTE.ink} strokeWidth={1.6} />
     </g>
   );
 }

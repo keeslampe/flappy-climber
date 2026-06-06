@@ -1,9 +1,4 @@
-import {
-  HEIGHT_METER_BOTTOM_OFFSET,
-  HEIGHT_METER_TOP_OFFSET,
-  HEIGHT_SCALE_MAX,
-  PALETTE,
-} from '../game/constants';
+import { HEIGHT_SCALE_MAX, PALETTE } from '../game/constants';
 import { waistYForHeight } from '../game/world';
 import type { World } from '../game/types';
 
@@ -14,15 +9,12 @@ interface Props {
 
 // Vertical ruler on the left edge — chunky white ticks, every-10m labels with
 // outlined text for crisp legibility against any background.
-export function HeightMeter({ world, groundY }: Props) {
+export function HeightMeter({ groundY }: Props) {
   const panelX = 0;
   const panelWidth = 58;
   const panelTop = 12;
   const panelBottom = groundY - 6;
   const railX = panelX + panelWidth - 6;
-  const bottomBound = groundY - HEIGHT_METER_BOTTOM_OFFSET;
-  const topBound = HEIGHT_METER_TOP_OFFSET;
-  const indicatorY = Math.max(topBound, Math.min(bottomBound, world.climber.y + 8));
   const ticks: number[] = [];
   for (let value = 10; value <= HEIGHT_SCALE_MAX; value += 10) ticks.push(value);
 
@@ -53,22 +45,6 @@ export function HeightMeter({ world, groundY }: Props) {
           );
         })}
       </g>
-      {/* Teal target marker — shows the goal height from the workout */}
-      {world.beamDisplayHeight > 0 && (() => {
-        const targetY = Math.max(topBound, Math.min(bottomBound, waistYForHeight(world.beamDisplayHeight, groundY)));
-        return (
-          <g>
-            <line x1={railX - 16} y1={targetY} x2={railX + 4} y2={targetY} stroke={PALETTE.teal} strokeWidth={2.5} strokeLinecap="round" strokeDasharray="4 3" />
-            <rect x={railX - 4} y={targetY - 4} width={8} height={8} fill={PALETTE.teal} rx={1.5} />
-          </g>
-        );
-      })()}
-      {/* Yellow arrow indicator — current climber position */}
-      <line
-        x1={railX - 8} y1={indicatorY}
-        x2={railX + 4} y2={indicatorY}
-        stroke={PALETTE.yellow} strokeWidth={3} strokeLinecap="round"
-      />
     </g>
   );
 }

@@ -19,6 +19,9 @@ export interface Anchor {
   // sits at the pull height is labelled 0 (you've reached the top). null = no badge
   // (e.g. when there's no program).
   label: number | null;
+  // The finish line at the end of the program — drawn as a flag on the ground and
+  // ends the run when it passes the climber, rather than being a clippable anchor.
+  isFinish: boolean;
 }
 
 export interface Particle {
@@ -64,6 +67,12 @@ export interface World {
   flashTimer: number;
 
   climber: Climber;
+  // Which way the climber is currently moving vertically — drives the climb /
+  // abseil / walk / idle animation choice. 'up' = climbing, 'down' = abseiling.
+  climberMotion: 'up' | 'down' | 'none';
+  // Recent climber height in kg, newest first (one sample per fixed step). Used to
+  // detect a fast drop (>2kg over 0.1s = 6 steps) that triggers the abseil pose.
+  heightHistoryKilograms: number[];
   anchors: Anchor[];
   ropePoints: number[];
   particles: Particle[];
@@ -79,6 +88,13 @@ export interface World {
   sequenceEventSpawned: boolean;
   sequenceTargetHeight: number;
   beamDisplayHeight: number;
+
+  // Finish line: scroll offset (px) at which the finish flag reaches the climber —
+  // 2 seconds after the last pull. 0 = no finish (e.g. no program). Once the flag
+  // passes the climber, finishReached flips and the run ends.
+  finishScroll: number;
+  finishSpawned: boolean;
+  finishReached: boolean;
 
   // Tindeq
   tindeqKilograms: number;

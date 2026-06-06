@@ -39,5 +39,6 @@ export function spawnAnchor(world: World, viewportHeight: number): Anchor {
     state: 'locked',
     seed: Math.floor(Math.random() * 10000),
     label,
+    isFinish: false,
   };
 }

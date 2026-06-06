@@ -156,14 +156,15 @@ export function BoltAnchorVisual({ anchor, groundY }: BoltAnchorProps) {
 
 // SVG-native version (no foreignObject) — renders within the SVG coordinate space
 export function BoltAnchorSvg({ anchor }: { anchor: Anchor }) {
-  const size = 92;
+  const size = 90;
   const colors = STATE_COLORS[anchor.state];
+  const scaleValue = size / 130;
   const displayWidth = size * (80 / 130);
 
-  // Center the anchor on its x, with the clip point (waistY) at the lower carabiner
-  const scaleValue = size / 130;
+  // Center the anchor on its x, with the pink sling middle (viewBox y=64) sitting
+  // right at the clip target level (waistY).
   const translateX = anchor.x - (displayWidth / 2);
-  const translateY = anchor.waistY - size * 0.9;
+  const translateY = anchor.waistY - 64 * scaleValue;
 
   return (
     <g transform={`translate(${translateX} ${translateY}) scale(${scaleValue})`}>
@@ -205,6 +206,46 @@ export function BoltAnchorSvg({ anchor }: { anchor: Anchor }) {
   );
 }
 
+// Checkered finish flag on the ground at the end of the program.
+function FinishFlag({ anchor }: { anchor: Anchor }) {
+  const x = anchor.x;
+  const base = anchor.waistY; // ground level
+  const top = base - 54;
+  const flagWidth = 28;
+  const flagHeight = 18;
+  const columns = 4;
+  const rows = 3;
+  const cellWidth = flagWidth / columns;
+  const cellHeight = flagHeight / rows;
+  const squares = [];
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      if ((row + column) % 2 === 0) {
+        squares.push(
+          <rect
+            key={`${row}-${column}`}
+            x={x + column * cellWidth}
+            y={top + row * cellHeight}
+            width={cellWidth}
+            height={cellHeight}
+            fill={PALETTE.ink}
+            stroke="none"
+          />,
+        );
+      }
+    }
+  }
+  return (
+    <g strokeLinejoin="round" strokeLinecap="round">
+      <line x1={x} y1={base + 4} x2={x} y2={top - 2} stroke={PALETTE.ink} strokeWidth={3.4} />
+      <rect x={x} y={top} width={flagWidth} height={flagHeight} fill={PALETTE.cream} stroke="none" />
+      {squares}
+      <rect x={x} y={top} width={flagWidth} height={flagHeight} fill="none" stroke={PALETTE.ink} strokeWidth={2.4} />
+      <ellipse cx={x} cy={base + 4} rx={7} ry={2.6} fill={PALETTE.ink} stroke="none" />
+    </g>
+  );
+}
+
 interface BoltAnchorsProps {
   world: World;
   groundY: number;
@@ -213,9 +254,13 @@ interface BoltAnchorsProps {
 export function BoltAnchors({ world }: BoltAnchorsProps) {
   return (
     <g>
-      {world.anchors.map((anchor, index) => (
-        <BoltAnchorSvg key={index} anchor={anchor} />
-      ))}
+      {world.anchors.map((anchor, index) =>
+        anchor.isFinish ? (
+          <FinishFlag key={index} anchor={anchor} />
+        ) : (
+          <BoltAnchorSvg key={index} anchor={anchor} />
+        ),
+      )}
     </g>
   );
 }

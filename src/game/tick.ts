@@ -39,6 +39,38 @@ export function tickWorld(world: World, opts: TickOpts): void {
   world.tindeqMoving =
     world.tindeqConnected && Math.abs(world.climber.y - previousY) > 0.3;
 
+  // Track the climber's height (kg) over a short window so we can detect a fast
+  // drop. 0.1s = 6 fixed steps; index 6 is the sample from ~0.1s ago.
+  const currentHeightKilograms = heightForWaistY(world.climber.y + 8, groundY);
+  world.heightHistoryKilograms.unshift(currentHeightKilograms);
+  if (world.heightHistoryKilograms.length > 7) world.heightHistoryKilograms.length = 7;
+  const heightTenthSecondAgo = world.heightHistoryKilograms[6] ?? currentHeightKilograms;
+  const dropKilogramsPerTenthSecond = heightTenthSecondAgo - currentHeightKilograms;
+
+  // Vertical motion (y decreases going up). Abseil ONLY on a fast drop — more than
+  // 2kg lost in the last 0.1s; otherwise a descent reads as a normal hang.
+  const deltaY = world.climber.y - previousY;
+  if (world.keysUp || deltaY < -0.3) world.climberMotion = 'up';
+  else if (dropKilogramsPerTenthSecond > 2) world.climberMotion = 'down';
+  else world.climberMotion = 'none';
+
+  // Chalk burst when landing on the ground after descending / abseiling.
+  const groundThreshold = groundY - 60;
+  if (world.climber.y >= groundThreshold && previousY < groundThreshold && deltaY > 0) {
+    for (let i = 0; i < 12; i++) {
+      world.particles.push({
+        x: world.climber.x + (Math.random() - 0.5) * 24,
+        y: groundY - 6,
+        velocityX: (Math.random() - 0.5) * 3.4,
+        velocityY: -1 - Math.random() * 2.6,
+        life: 1,
+        decay: 0.038 + Math.random() * 0.03,
+        radius: 2.5 + Math.random() * 4.5,
+        color: '#EDE9DD',
+      });
+    }
+  }
+
   world.weight = Math.max(
     0,
     Math.min(HEIGHT_SCALE_MAX, Math.round(heightForWaistY(world.climber.y + 8, groundY))),
@@ -50,12 +82,12 @@ export function tickWorld(world: World, opts: TickOpts): void {
   if (moving) world.climber.animationTime += 0.17;
   else if (onGround) world.climber.animationTime += 0.08;
 
-  // Chalk puff when actively moving
-  if ((world.keysUp || world.keysDown) && world.frameNumber % 8 === 0) {
+  // Chalk puff while climbing up (from the chalk bucket on the right hip)
+  if (world.climberMotion === 'up' && world.frameNumber % 8 === 0) {
     for (let i = 0; i < 4; i++) {
       world.particles.push({
-        x: world.climber.x - 8,
-        y: world.climber.y + 12,
+        x: world.climber.x + 16,
+        y: world.climber.y + 10,
         velocityX: (Math.random() - 0.5) * 2.5,
         velocityY: -1.2 - Math.random() * 2,
         life: 1,
@@ -68,6 +100,24 @@ export function tickWorld(world: World, opts: TickOpts): void {
 
   // Sequence engine — spawns anchors + eases the beam/wall crest height
   tickSequence(world, opts.viewportHeight);
+
+  // Spawn the finish flag once it would scroll into view. Its x is pinned to the
+  // finish scroll offset so it reaches the climber exactly at world.finishScroll.
+  if (world.finishScroll > 0 && !world.finishSpawned) {
+    const finishX = world.climber.x + (world.finishScroll - world.backgroundScrollY);
+    if (finishX <= WORLD_WIDTH + 30) {
+      world.anchors.push({
+        x: finishX,
+        heightMeters: 0,
+        waistY: waistYForHeight(0, groundY),
+        state: 'next',
+        seed: 0,
+        label: null,
+        isFinish: true,
+      });
+      world.finishSpawned = true;
+    }
+  }
 
   // Promote the closest upcoming unclipped anchor to 'next'
   const upcomingAnchors = world.anchors.filter(
@@ -89,6 +139,11 @@ export function tickWorld(world: World, opts: TickOpts): void {
   const climberWaistY = world.climber.y + 8;
   for (const anchor of world.anchors) {
     anchor.x -= SCROLL_SPEED;
+    if (anchor.isFinish) {
+      // The finish flag isn't clippable — passing the climber ends the run.
+      if (anchor.x <= world.climber.x) world.finishReached = true;
+      continue;
+    }
     if (anchor.state === 'hit') continue;
     const withinColumn =
       Math.abs(anchor.x - world.climber.x) <= ANCHOR_CLIP_X_TOLERANCE;

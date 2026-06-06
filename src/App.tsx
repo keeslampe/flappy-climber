@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { WORLD_WIDTH } from './game/constants';
+import { SCROLL_SPEED, WORLD_WIDTH } from './game/constants';
 import { parseSequence } from './game/sequence';
 import { tickWorld } from './game/tick';
 import type { SeqEvent } from './game/types';
@@ -12,6 +12,7 @@ import { Ground } from './components/Ground';
 import { HeadsUpDisplay } from './components/HeadsUpDisplay';
 import { HeightMeter } from './components/HeightMeter';
 import { Overlay } from './components/Overlay';
+import { ResultsScreen } from './components/ResultsScreen';
 import { ProgramTargetLine } from './components/ProgramTargetLine';
 import { BoltAnchors } from './visual/BoltAnchor';
 import { ClimbingWall } from './visual/ClimbingWall';
@@ -58,6 +59,7 @@ export default function App() {
   const [showDebug, setShowDebug] = useState(true);
   const [showTargetLine, setShowTargetLine] = useState(true);
   const [showOverlay, setShowOverlay] = useState(true);
+  const [showResults, setShowResults] = useState(false);
   const [bestScore, setBestScore] = useState(0);
   const [lastRun, setLastRun] = useState<{ score: number; seconds: number } | null>(null);
 
@@ -76,7 +78,16 @@ export default function App() {
       world.sequenceProgram = parsed.events;
       world.sequenceRepeatMax = parsed.repeatTimes;
     }
+    // Finish line 2 seconds after the last pull ends (no pull → no finish line).
+    let cursor = 0;
+    let lastPullEnd = 0;
+    for (const event of world.sequenceProgram) {
+      cursor += event.duration * 60 * SCROLL_SPEED;
+      if (event.type === 'on') lastPullEnd = cursor;
+    }
+    world.finishScroll = lastPullEnd > 0 ? lastPullEnd + 2 * 60 * SCROLL_SPEED : 0;
     world.status = 'playing';
+    setShowResults(false);
     setShowOverlay(false);
   }, [logicalHeight, seqText]);
 
@@ -86,7 +97,19 @@ export default function App() {
     world.status = 'idle';
     setLastRun({ score: world.score, seconds: world.seconds });
     if (world.score > bestScore) setBestScore(world.score);
+    setShowResults(false);
     setShowOverlay(true);
+  }, [bestScore]);
+
+  // Reaching the finish flag ends the run and shows the results overview.
+  const finishRun = useCallback(() => {
+    const world = worldRef.current;
+    if (world.status !== 'playing') return;
+    world.status = 'idle';
+    world.finishReached = false;
+    setLastRun({ score: world.score, seconds: world.seconds });
+    if (world.score > bestScore) setBestScore(world.score);
+    setShowResults(true);
   }, [bestScore]);
 
   const setUp = useCallback((value: boolean) => { worldRef.current.keysUp = value; }, []);
@@ -111,6 +134,7 @@ export default function App() {
       tickWorld(world, { viewportHeight: logicalHeight });
       stepAccumulatorRef.current -= FIXED_STEP_SECONDS;
     }
+    if (world.status === 'playing' && world.finishReached) finishRun();
     setTick((tick) => (tick + 1) | 0);
   });
 
@@ -130,10 +154,10 @@ export default function App() {
         <HorizonHaze worldWidth={WORLD_WIDTH} groundY={groundY} />
         <ValleyFloor worldWidth={WORLD_WIDTH} groundY={groundY} />
         <ClimbingWall world={world} worldWidth={WORLD_WIDTH} groundY={groundY} />
-        <BoltAnchors world={world} groundY={groundY} />
         <Ground worldWidth={WORLD_WIDTH} groundY={groundY} viewportHeight={logicalHeight} groundOffset={world.groundOffset} />
+        <BoltAnchors world={world} groundY={groundY} />
+        <Climber world={world} groundY={groundY} />
         <Rope world={world} />
-        <Climber world={world} />
         <Particles world={world} />
         <ScorePops world={world} />
         <HeightMeter world={world} groundY={groundY} />
@@ -157,6 +181,18 @@ export default function App() {
         onDownChange={(value) => { worldRef.current.keysDown = value; }}
         onMenu={returnToMenu}
       />
+
+      {showResults && lastRun && (
+        <ResultsScreen
+          score={lastRun.score}
+          seconds={lastRun.seconds}
+          best={bestScore}
+          onClose={() => {
+            setShowResults(false);
+            setShowOverlay(true);
+          }}
+        />
+      )}
 
       {showOverlay && (
         <Overlay

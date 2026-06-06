@@ -23,7 +23,6 @@ export function RadKidIdle() {
       <path d="M52 50 L52 64 M68 50 L68 62" strokeWidth="2" />
       <circle cx="52" cy="65" r="1.6" fill="#1A1A1A" stroke="none" />
       <circle cx="68" cy="63" r="1.6" fill="#1A1A1A" stroke="none" />
-      <path d="M52 60 Q56 56 60 60 T68 60" strokeWidth="2.2" stroke="#FF3D8A" fill="none" />
 
       {/* === HEAD === */}
       <path d="M50 22 Q48 36 54 42 Q66 44 70 36 Q72 30 70 22 Q66 14 60 14 Q54 14 50 22 Z" fill="#F2C9A0" />
@@ -41,24 +40,22 @@ export function RadKidIdle() {
 
       {/* === SHORTS === */}
       <path d="M40 88 L80 88 L78 106 L68 106 L64 96 L56 96 L52 106 L42 106 Z" fill="#7A2BD9" />
-      <path d="M48 100 L52 94 L56 100 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
-      <path d="M64 102 L68 96 L72 102 Z" fill="#FF3D8A" stroke="#1A1A1A" strokeWidth="1.6" />
 
       {/* === RIGHT LEG (left on screen) — planted === */}
       <path d="M42 106 L52 106 L50 120 L40 120 Z" fill="#F2C9A0" />
-      <path d="M36 118 L54 118 L56 124 L36 124 Q30 124 30 120 Z" fill="#FFD23F" />
-      <path d="M38 121 L54 121" strokeWidth="2" />
-      <path d="M40 122 Q46 120 54 122" strokeWidth="1.8" stroke="#FF3D8A" fill="none" />
+      <g transform="matrix(-1 0 0 1 86 0)">
+        <path d="M36 118 L54 118 L56 124 L36 124 Q30 124 30 120 Z" fill="#FFD23F" />
+        <path d="M38 121 L54 121" strokeWidth="2" />
+        <path d="M40 122 Q46 120 54 122" strokeWidth="1.8" stroke="#FF3D8A" fill="none" />
+      </g>
 
       {/* === LEFT LEG (right on screen) — planted === */}
       <path d="M68 106 L80 106 L82 120 L70 120 Z" fill="#F2C9A0" />
-      <path d="M64 118 L86 118 L88 124 L66 124 Q62 124 62 120 Z" fill="#FFD23F" />
-      <path d="M68 121 L86 121" strokeWidth="2" />
-      <path d="M70 122 Q78 120 86 122" strokeWidth="1.8" stroke="#FF3D8A" fill="none" />
-
-      {/* chalk bag on back hip */}
-      <ellipse cx="38" cy="93" rx="4.5" ry="6" fill="#FFF6E5" />
-      <path d="M34 89 L42 89" strokeWidth="2" />
+      <g transform="matrix(-1 0 0 1 150 0)">
+        <path d="M64 118 L86 118 L88 124 L66 124 Q62 124 62 120 Z" fill="#FFD23F" />
+        <path d="M68 121 L86 121" strokeWidth="2" />
+        <path d="M70 122 Q78 120 86 122" strokeWidth="1.8" stroke="#FF3D8A" fill="none" />
+      </g>
     </g>
   );
 }

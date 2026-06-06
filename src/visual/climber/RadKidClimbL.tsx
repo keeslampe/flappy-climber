@@ -33,21 +33,23 @@ export function RadKidClimbL() {
 
       {/* === SHORTS === */}
       <path d="M42 88 L80 88 L78 106 L66 106 L62 96 L56 96 L52 106 L42 106 Z" fill="#7A2BD9" />
-      <path d="M48 98 L52 92 L56 98 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
-      <path d="M64 100 L68 94 L72 100 Z" fill="#FF3D8A" stroke="#1A1A1A" strokeWidth="1.6" />
 
       {/* === LEFT LEG PLANTED LONG (back leg, low foot) === */}
       <path d="M44 106 L56 106 L54 122 L42 122 Z" fill="#F2C9A0" />
-      <path d="M38 118 L58 118 L60 124 L36 124 Q32 124 32 120 Z" fill="#FFD23F" />
-      <path d="M40 121 L58 121" strokeWidth="2" />
-      <path d="M40 122 Q48 120 58 122" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+      <g transform="matrix(-1 0 0 1 92 0)">
+        <path d="M38 118 L58 118 L60 124 L36 124 Q32 124 32 120 Z" fill="#FFD23F" />
+        <path d="M40 121 L58 121" strokeWidth="2" />
+        <path d="M40 122 Q48 120 58 122" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+      </g>
 
       {/* === RIGHT LEG BENT UP (front leg, knee high, foot pushing wall) === */}
       <path d="M62 90 L80 86 L74 102 L60 102 Z" fill="#7A2BD9" />
       <path d="M60 102 L74 102 L70 112 L58 112 Z" fill="#F2C9A0" />
-      <path d="M54 108 L74 108 L78 116 L52 116 Q46 114 48 110 Z" fill="#FFD23F" />
-      <path d="M52 112 L74 112" strokeWidth="2" />
-      <path d="M52 114 Q62 111 74 113" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+      <g transform="matrix(-1 0 0 1 124 0)">
+        <path d="M54 108 L74 108 L78 116 L52 116 Q46 114 48 110 Z" fill="#FFD23F" />
+        <path d="M52 112 L74 112" strokeWidth="2" />
+        <path d="M52 114 Q62 111 74 113" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+      </g>
 
       {/* === HEAD (facing right, looking up at reach) === */}
       <path d="M52 22 Q50 38 58 44 Q70 44 76 36 Q78 28 76 20 Q70 12 60 14 Q54 16 52 22 Z" fill="#F2C9A0" />

@@ -31,17 +31,19 @@ export function RadKidClimbMid() {
 
       {/* === SHORTS === */}
       <path d="M42 88 L80 88 L78 106 L66 106 L62 96 L56 96 L52 106 L42 106 Z" fill="#7A2BD9" />
-      <path d="M48 98 L52 92 L56 98 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
-      <path d="M64 100 L68 94 L72 100 Z" fill="#FF3D8A" stroke="#1A1A1A" strokeWidth="1.6" />
 
       {/* === BOTH LEGS straight (mid-step, slightly staggered for forward feel) === */}
       <path d="M46 106 L58 106 L56 122 L44 122 Z" fill="#F2C9A0" />
-      <path d="M40 118 L60 118 L62 124 L38 124 Q34 124 34 120 Z" fill="#FFD23F" />
-      <path d="M42 121 L60 121" strokeWidth="2" />
+      <g transform="matrix(-1 0 0 1 96 0)">
+        <path d="M40 118 L60 118 L62 124 L38 124 Q34 124 34 120 Z" fill="#FFD23F" />
+        <path d="M42 121 L60 121" strokeWidth="2" />
+      </g>
 
       <path d="M64 106 L78 106 L76 122 L64 122 Z" fill="#F2C9A0" />
-      <path d="M60 118 L80 118 L82 124 L60 124 Q56 124 56 120 Z" fill="#FFD23F" />
-      <path d="M62 121 L80 121" strokeWidth="2" />
+      <g transform="matrix(-1 0 0 1 138 0)">
+        <path d="M60 118 L80 118 L82 124 L60 124 Q56 124 56 120 Z" fill="#FFD23F" />
+        <path d="M62 121 L80 121" strokeWidth="2" />
+      </g>
 
       {/* === HEAD === */}
       <path d="M52 22 Q50 38 58 44 Q70 44 76 36 Q78 28 76 20 Q70 12 60 14 Q54 16 52 22 Z" fill="#F2C9A0" />

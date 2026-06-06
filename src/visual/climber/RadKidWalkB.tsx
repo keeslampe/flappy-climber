@@ -26,22 +26,24 @@ export function RadKidWalkB() {
 
       {/* === SHORTS === */}
       <path d="M46 88 L82 88 L80 106 L68 106 L64 96 L58 96 L54 106 L46 106 Z" fill="#7A2BD9" />
-      <path d="M52 98 L56 92 L60 98 Z" fill="#FF3D8A" stroke="#1A1A1A" strokeWidth="1.6" />
-      <path d="M66 100 L70 94 L74 100 Z" fill="#FFD23F" stroke="#1A1A1A" strokeWidth="1.6" />
 
       {/* === LEFT LEG STRIDING FORWARD (bent knee, foot lifted) === */}
       <path d="M50 104 L68 100 L72 116 L58 116 Z" fill="#7A2BD9" />
       <path d="M66 114 L72 116 L74 122 L60 124 Z" fill="#F2C9A0" />
-      <path d="M58 122 L78 118 L80 124 L58 126 Q52 126 52 122 Z" fill="#FFD23F" />
-      <path d="M60 124 L78 122" strokeWidth="2" />
-      <path d="M60 125 Q68 122 78 124" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+      <g transform="matrix(-1 0 0 1 132 0)">
+        <path d="M58 122 L78 118 L80 124 L58 126 Q52 126 52 122 Z" fill="#FFD23F" />
+        <path d="M60 124 L78 122" strokeWidth="2" />
+        <path d="M60 125 Q68 122 78 124" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+      </g>
 
       {/* === RIGHT LEG PLANTED BACK (straight, slightly behind body axis) === */}
       <path d="M66 104 L78 104 L74 122 L62 122 Z" fill="#7A2BD9" />
       <path d="M66 110 L76 110 L74 124 L64 124 Z" fill="#F2C9A0" />
-      <path d="M56 120 L76 120 L78 126 L56 126 Q50 126 50 122 Z" fill="#FFD23F" />
-      <path d="M58 123 L76 123" strokeWidth="2" />
-      <path d="M58 124 Q66 122 76 124" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+      <g transform="matrix(-1 0 0 1 128 0)">
+        <path d="M56 120 L76 120 L78 126 L56 126 Q50 126 50 122 Z" fill="#FFD23F" />
+        <path d="M58 123 L76 123" strokeWidth="2" />
+        <path d="M58 124 Q66 122 76 124" strokeWidth="1.6" stroke="#FF3D8A" fill="none" />
+      </g>
 
       {/* === HEAD === */}
       <path d="M54 24 Q52 40 60 46 Q72 46 78 38 Q80 30 78 22 Q72 14 62 16 Q56 18 54 24 Z" fill="#F2C9A0" />

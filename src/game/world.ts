@@ -56,6 +56,8 @@ export function createInitialWorld(viewportHeight: number): World {
     flashTimer: 0,
 
     climber: { x: 90, y: groundY - 20, width: 30, height: 44, animationTime: 0 },
+    climberMotion: 'none',
+    heightHistoryKilograms: [],
     anchors: [] as Anchor[],
     ropePoints: [],
     particles: [],
@@ -70,6 +72,10 @@ export function createInitialWorld(viewportHeight: number): World {
     sequenceEventSpawned: false,
     sequenceTargetHeight: 0,
     beamDisplayHeight: 0,
+
+    finishScroll: 0,
+    finishSpawned: false,
+    finishReached: false,
 
     tindeqKilograms: 0,
     tindeqSmoothedKilograms: 0,
@@ -86,6 +92,8 @@ export function resetForNewGame(world: World, viewportHeight: number): void {
   world.climber.x = 90;
   world.climber.y = groundY - 20;
   world.climber.animationTime = 0;
+  world.climberMotion = 'none';
+  world.heightHistoryKilograms.length = 0;
   world.anchors.length = 0;
   world.ropePoints.length = 0;
   world.particles.length = 0;
@@ -103,6 +111,9 @@ export function resetForNewGame(world: World, viewportHeight: number): void {
   world.sequenceEventSpawned = false;
   world.sequenceTargetHeight = 0;
   world.beamDisplayHeight = 0;
+  world.finishScroll = 0;
+  world.finishSpawned = false;
+  world.finishReached = false;
   world.tindeqSmoothedKilograms = 0;
   world.tindeqMoving = false;
 }

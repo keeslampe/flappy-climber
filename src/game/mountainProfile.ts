@@ -1,9 +1,8 @@
 import {
-  ANCHOR_SPACING_PIXELS,
   SCROLL_SPEED,
   WALL_FADE_UNITS,
   WALL_HEADROOM_PIXELS,
-  WALL_PEAK_AMPLITUDE_PIXELS,
+  WALL_PEAK_CEILING_KG,
 } from './constants';
 import { createRandom } from './randomNumberGenerator';
 import { waistYForHeight } from './world';
@@ -145,34 +144,33 @@ function rollingNoise(position: number, cellSize: number, seedOffset: number): n
   return valueA + (valueB - valueA) * smooth;
 }
 
-// Horizontal distance (in scroll pixels) over which the crest slopes down from a
-// plateau into the rest valley. Wider = gentler mountainside.
-const CREST_RAMP_PIXELS = 72;
+// Horizontal distances (scroll px) over which the crest ramps. The leading (rise)
+// edge is wide so the mountain starts gradually; the trailing (fall) edge is short
+// so the rock drops promptly once the last clip of a pull has passed.
+const CREST_RISE_PIXELS = 120;
+const CREST_FALL_PIXELS = 44;
+
+// How far past the pull's end the full-height plateau is held — just enough to
+// keep rock behind the boundary clip (which sits at the pull height), then the
+// rock descends right after it.
+const CREST_PLATEAU_TAIL_PIXELS = 34;
 
 function smoothstep(t: number): number {
   const clamped = Math.max(0, Math.min(1, t));
   return clamped * clamped * (3 - 2 * clamped);
 }
 
-// Distance from `position` to the interval [start, end] on a circle of length
-// `total` (0 when inside the interval). Used so the program's repeats wrap.
-function circularDistanceToInterval(
-  position: number,
-  start: number,
-  end: number,
-  total: number,
-): number {
-  if (position >= start && position <= end) return 0;
-  const toStart = Math.abs(position - start);
-  const toEnd = Math.abs(position - end);
-  return Math.min(toStart, total - toStart, toEnd, total - toEnd);
+// Shortest distance from `position` to a single point on a circle of length `total`.
+function circularDistance(position: number, point: number, total: number): number {
+  const raw = Math.abs(position - point);
+  return Math.min(raw, total - raw);
 }
 
-// Smooth crest base height in metres. Unlike the sharp `targetHeightAtDistance`,
-// this shapes each 'on' plateau into an envelope that holds FULL height across the
-// whole plateau (so every elevated clip on it stays cleared) and then smoothsteps
-// down to the rest level OUTSIDE the plateau. Because it is continuous in the
-// scroll position, the crest glides instead of stepping as the wall scrolls.
+// Smooth crest base height in metres. Each 'on' plateau holds FULL height across
+// the whole plateau (so every elevated clip stays cleared), ramps UP gradually
+// before it (wide rise) and DOWN promptly just after it (short fall). The result
+// is continuous in the scroll position, so the crest glides — no flicker — instead
+// of jumping as the wall scrolls.
 function crestBaseMeters(world: World, pixelsAhead: number): number {
   const program = world.sequenceProgram;
 
@@ -196,7 +194,8 @@ function crestBaseMeters(world: World, pixelsAhead: number): number {
   const cyclePosition =
     ((lookAhead % totalProgramPixels) + totalProgramPixels) % totalProgramPixels;
 
-  // Envelope = max over each 'on' event of (height shaped by a smoothstep skirt).
+  // Envelope = max over each 'on' event of its height shaped by a smoothstep skirt
+  // (1 across the plateau, ramping to 0 outside — wide before, short after).
   let base = 0;
   let cursor = 0;
   for (let index = 0; index < program.length; index++) {
@@ -206,16 +205,21 @@ function crestBaseMeters(world: World, pixelsAhead: number): number {
     const event = program[index];
     const height = event.type === 'on' ? event.height : 0;
     if (height <= 0) continue;
-    // Hold the plateau one clip-spacing past the pull's end so the end-of-pull
-    // clip (lifted to the pull height in spawnAnchor) keeps rock behind it.
-    const effectiveEnd = end + ANCHOR_SPACING_PIXELS;
-    const distanceOutside = circularDistanceToInterval(
-      cyclePosition,
-      start,
-      effectiveEnd,
-      totalProgramPixels,
-    );
-    const skirt = 1 - smoothstep(distanceOutside / CREST_RAMP_PIXELS); // 1 inside → 0 over ramp
+    // Hold the plateau just past the pull's end so the boundary clip (lifted to
+    // the pull height in spawnAnchor) keeps rock behind it.
+    const effectiveEnd = end + CREST_PLATEAU_TAIL_PIXELS;
+
+    let skirt: number;
+    if (cyclePosition >= start && cyclePosition <= effectiveEnd) {
+      skirt = 1;
+    } else {
+      const distanceToStart = circularDistance(cyclePosition, start, totalProgramPixels);
+      const distanceToEnd = circularDistance(cyclePosition, effectiveEnd, totalProgramPixels);
+      skirt =
+        distanceToStart <= distanceToEnd
+          ? 1 - smoothstep(distanceToStart / CREST_RISE_PIXELS) // approaching → gradual rise
+          : 1 - smoothstep(distanceToEnd / CREST_FALL_PIXELS); // leaving → prompt fall
+    }
     base = Math.max(base, height * skirt);
   }
   return base;
@@ -240,25 +244,27 @@ export function sampleWallCrest(
     const pixelsAhead = x - world.climber.x;
 
     // Smooth envelope of the workout target (full height across each plateau,
-    // smoothstepping down into the rest valley).
+    // ramping up gradually before it and dropping into the rest valley after).
     const baseUnits = crestBaseMeters(world, pixelsAhead);
 
-    // Terrain-locked position so peaks travel with the wall, not the viewport.
+    // Terrain-locked position so peaks travel with the wall, not the viewport. 0..1.
     const terrainPosition = world.backgroundScrollY + x;
+    const noise =
+      0.55 * rollingNoise(terrainPosition, 96, 0) +
+      0.30 * rollingNoise(terrainPosition, 150, 1000) +
+      0.15 * rollingNoise(terrainPosition, 38, 7000);
 
-    // Multi-octave rolling peaks (all additive, 0..WALL_PEAK_AMPLITUDE_PIXELS),
-    // lifting the crest upward (smaller y) above the clip line plus a fixed headroom.
-    const peakPixels =
-      WALL_PEAK_AMPLITUDE_PIXELS *
-      (0.55 * rollingNoise(terrainPosition, 96, 0) +
-        0.30 * rollingNoise(terrainPosition, 232, 1000) +
-        0.15 * rollingNoise(terrainPosition, 30, 7000));
+    // Crest height in kg: rolling peaks add variation that scales with the plateau
+    // height, so it rises gradually with the start and tapers smoothly back down
+    // with the descent (continuous → no flicker), reaching as high as
+    // WALL_PEAK_CEILING_KG over the tallest pulls.
+    const peakKg = noise * baseUnits;
+    const crestKg = Math.min(WALL_PEAK_CEILING_KG, baseUnits + peakKg);
 
     // Fade the whole wall down to the ground line as the target vanishes: a 0kg
-    // (rest) target shows no mountain — just the ground — while a pull rises with
-    // headroom + peaks above the clip line. Presence blends the crest between them.
+    // (rest) target shows no mountain — just the ground. Presence blends the crest.
     const presence = smoothstep(baseUnits / WALL_FADE_UNITS);
-    const wallTopY = waistYForHeight(baseUnits, groundY) - WALL_HEADROOM_PIXELS - peakPixels;
+    const wallTopY = waistYForHeight(crestKg, groundY) - WALL_HEADROOM_PIXELS;
     const rawY = groundY + (wallTopY - groundY) * presence;
     const y = Math.max(24, Math.min(groundY, rawY));
     points.push({ x, y });
