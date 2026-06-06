@@ -51,18 +51,6 @@ export function ProgramTargetLine({ world, groundY }: Props) {
         strokeLinejoin="round"
         opacity={0.9}
       />
-      {/* "Present" — the climber's column. */}
-      <line
-        x1={climberX}
-        y1={28}
-        x2={climberX}
-        y2={groundY}
-        stroke={COLOR}
-        strokeWidth={1}
-        strokeDasharray="2 4"
-        opacity={0.4}
-      />
-      <circle cx={climberX} cy={currentY} r={4} fill={COLOR} stroke="#1A1A1A" strokeWidth={1.5} />
       <text
         x={climberX + 9}
         y={currentY - 7}
