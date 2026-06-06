@@ -54,7 +54,7 @@ export default function App() {
   const [, setTick] = useState(0);
   const tindeq = useTindeq();
   const [seqText, setSeqText] = useState(DEFAULT_SEQ);
-  const [showDebug, setShowDebug] = useState(false);
+  const [showDebug, setShowDebug] = useState(true);
   const [showOverlay, setShowOverlay] = useState(true);
   const [bestScore, setBestScore] = useState(0);
   const [lastRun, setLastRun] = useState<{ score: number; seconds: number } | null>(null);
