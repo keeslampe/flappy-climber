@@ -6,102 +6,101 @@ interface Props {
   backgroundScrollY: number;
 }
 
-// Source: env-sky.jsx, scaled to canvas width.
-const FAR_RIDGE: [number, number][] = [
-  [0, 80], [30, 50], [60, 78], [95, 18], [130, 70], [170, 36], [210, 82],
-  [255, 24], [300, 70], [340, 44], [380, 76], [400, 50],
-];
-const FAR_SNOWCAPS: number[][] = [
-  [88, 28, 95, 18, 102, 28, 99, 36, 91, 36],
-  [249, 34, 255, 24, 262, 34, 259, 42, 252, 42],
-  [166, 44, 170, 36, 174, 44, 172, 50, 168, 50],
-  [333, 52, 340, 44, 347, 52, 344, 58, 336, 58],
-];
-const MID_RIDGE: [number, number][] = [
-  [0, 100], [30, 78], [55, 96], [90, 60], [130, 100], [165, 72], [210, 104],
-  [245, 64], [290, 102], [330, 80], [365, 100], [400, 76],
-];
+// LCG PRNG matching the Valley Climb design's buildRange seed algorithm.
+function lcgRandom(seed: number): () => number {
+  let state = (seed >>> 0) || 1;
+  return () => {
+    state = ((state * 1664525 + 1013904223) >>> 0);
+    return state / 4294967296;
+  };
+}
+
+interface RangeResult {
+  fillPath: string;
+  topPoints: Array<[number, number]>;
+}
+
+// Generates a jagged mountain range across 0..100 x-space (percent).
+// Returns a closed fill polygon and the crest points for snow lines.
+function buildRange(seed: number, baseY: number, amplitude: number, peakCount: number): RangeResult {
+  const random = lcgRandom(seed);
+  const top: Array<[number, number]> = [[0, baseY - amplitude * (0.3 + 0.4 * random())]];
+  for (let peakIndex = 1; peakIndex <= peakCount; peakIndex++) {
+    const x = (peakIndex / peakCount) * 100;
+    const peakX = x - (100 / peakCount) * (0.45 + 0.1 * random());
+    const peakY = baseY - amplitude * (0.55 + 0.45 * random());
+    const saddleY = baseY - amplitude * (0.05 + 0.22 * random());
+    top.push([+peakX.toFixed(1), +peakY.toFixed(1)]);
+    top.push([+x.toFixed(1), +saddleY.toFixed(1)]);
+  }
+  const fillPath =
+    `M 0 100 L ${top.map(([x, y]) => `${x} ${y}`).join(' L ')} L 100 100 Z`;
+  return { fillPath, topPoints: top };
+}
 
 export function Mountains({ worldWidth, groundY, backgroundScrollY }: Props) {
-  return (
-    <>
-      <Ridge
-        points={FAR_RIDGE}
-        baseline={groundY - 240}
-        viewHeight={140}
-        fill="#9DB4C9"
-        strokeWidth={2.2}
-        scroll={backgroundScrollY * 0.05}
-        snowcaps={FAR_SNOWCAPS}
-        worldWidth={worldWidth}
-      />
-      <Ridge
-        points={MID_RIDGE}
-        baseline={groundY - 180}
-        viewHeight={140}
-        fill="#5F7E94"
-        strokeWidth={2.6}
-        scroll={backgroundScrollY * 0.10}
-        snowcaps={null}
-        worldWidth={worldWidth}
-      />
-    </>
-  );
-}
+  const ridgeHeight = groundY;
 
-interface RidgeProps {
-  points: [number, number][];
-  baseline: number;
-  viewHeight: number;
-  fill: string;
-  strokeWidth: number;
-  scroll: number;
-  snowcaps: number[][] | null;
-  worldWidth: number;
-}
+  // Far range (palest) — uses Valley Climb seed * 7 + 1, baseY 60, amp ~28
+  const farSeed = 13 * 7 + 1;
+  const far = buildRange(farSeed, 60, 28, 9);
 
-// Outlined mountain ridge that wraps horizontally for parallax. `points` are
-// in a 0..400 local space; scaled to the canvas and tiled twice to wrap.
-function Ridge({ points, baseline, viewHeight, fill, strokeWidth, scroll, snowcaps, worldWidth }: RidgeProps) {
-  const segmentWidth = worldWidth;
-  const offset = ((scroll % segmentWidth) + segmentWidth) % segmentWidth;
-  const tiles: number[] = [-1, 0, 1];
+  // Mid range (deeper) — uses Valley Climb seed * 13 + 5, baseY 54, amp ~20
+  const midSeed = 13 * 13 + 5;
+  const mid = buildRange(midSeed, 54, 20, 7);
+
+  // Convert percent-space paths to pixel space
+  const toPixelPath = (percentPath: string) =>
+    percentPath.replace(/(-?[\d.]+) (-?[\d.]+)/g, (_, xStr, yStr) => {
+      const xValue = parseFloat(xStr);
+      const yValue = parseFloat(yStr);
+      return `${((xValue / 100) * worldWidth).toFixed(1)} ${((yValue / 100) * ridgeHeight).toFixed(1)}`;
+    });
+
+  const farFillPixels = toPixelPath(far.fillPath);
+  const midFillPixels = toPixelPath(mid.fillPath);
+
+  const toPixelPoints = (pts: Array<[number, number]>) =>
+    pts.map(([x, y]) => `${((x / 100) * worldWidth).toFixed(1)},${((y / 100) * ridgeHeight).toFixed(1)}`).join(' ');
+
+  const farSnowPoints = toPixelPoints(far.topPoints);
+  const midSnowPoints = toPixelPoints(mid.topPoints);
+
+  // Parallax offsets — far scrolls slower than mid
+  const farOffset = ((backgroundScrollY * 0.05) % worldWidth + worldWidth) % worldWidth;
+  const midOffset = ((backgroundScrollY * 0.10) % worldWidth + worldWidth) % worldWidth;
+
   return (
-    <g strokeLinejoin="round" strokeLinecap="round">
-      {tiles.map((tile) => {
-        const x0 = tile * segmentWidth - offset;
-        const fillPath =
-          `M ${x0} ${baseline} ` +
-          points
-            .map(([localX, localY]) => `L ${x0 + (localX / 400) * segmentWidth} ${baseline - (viewHeight - localY)}`)
-            .join(' ') +
-          ` L ${x0 + segmentWidth} ${baseline} Z`;
-        const strokePath = points
-          .map(([localX, localY], i) => {
-            const pointX = x0 + (localX / 400) * segmentWidth;
-            const pointY = baseline - (viewHeight - localY);
-            return `${i === 0 ? 'M' : 'L'} ${pointX} ${pointY}`;
-          })
-          .join(' ');
-        return (
-          <g key={tile}>
-            <path d={fillPath} fill={fill} />
-            <path d={strokePath} fill="none" stroke={PALETTE.ink} strokeWidth={strokeWidth} />
-            {snowcaps?.map((pts, i) => {
-              const pathData = pts
-                .reduce<string>((acc, _, idx) => {
-                  if (idx % 2 !== 0) return acc;
-                  const snowX = x0 + (pts[idx] / 400) * segmentWidth;
-                  const snowY = baseline - (viewHeight - pts[idx + 1]);
-                  return acc + `${idx === 0 ? 'M' : 'L'} ${snowX} ${snowY} `;
-                }, '') + 'Z';
-              return (
-                <path key={i} d={pathData} fill="#F0F5FB" stroke={PALETTE.ink} strokeWidth={strokeWidth * 0.9} />
-              );
-            })}
-          </g>
-        );
-      })}
+    <g>
+      {/* Far peaks (palest) */}
+      {[-1, 0, 1].map((tile) => (
+        <g key={`far${tile}`} transform={`translate(${tile * worldWidth - farOffset} 0)`}>
+          <path d={farFillPixels} fill={PALETTE.farPeaks} />
+          <polyline
+            points={farSnowPoints}
+            fill="none"
+            stroke="#F2F6FB"
+            strokeWidth="2.4"
+            strokeLinejoin="round"
+            opacity="0.9"
+          />
+        </g>
+      ))}
+
+      {/* Mid peaks (deeper) */}
+      {[-1, 0, 1].map((tile) => (
+        <g key={`mid${tile}`} transform={`translate(${tile * worldWidth - midOffset} 0)`}>
+          <path d={midFillPixels} fill={PALETTE.midPeaks} />
+          <polyline
+            points={midSnowPoints}
+            fill="none"
+            stroke="#E7EEF6"
+            strokeWidth="2"
+            strokeLinejoin="round"
+            opacity="0.8"
+          />
+        </g>
+      ))}
     </g>
   );
 }

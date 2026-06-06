@@ -1,19 +1,20 @@
 import {
+  ANCHOR_CLIP_HEIGHT_TOLERANCE,
+  ANCHOR_CLIP_X_TOLERANCE,
+  ANCHOR_SPAWN_INTERVAL,
+  HEIGHT_SCALE_MAX,
   MOVE_SPEED,
-  OBSTACLE_INTERVAL,
   ROPE_MAX_SAMPLES,
   ROPE_SAMPLE_FRAMES,
   SCROLL_SPEED,
   WORLD_WIDTH,
 } from './constants';
-import { checkCollision } from './collision';
-import { obstacleSpan, spawnIntervalWall, spawnObstacle } from './obstacles';
-import { getGroundY } from './world';
+import { spawnAnchor } from './anchors';
+import { getGroundY, heightForWaistY, waistYForHeight } from './world';
 import type { World } from './types';
 
 interface TickOpts {
   viewportHeight: number;
-  onFlash: () => void;
 }
 
 export function tickWorld(world: World, opts: TickOpts): void {
@@ -29,10 +30,7 @@ export function tickWorld(world: World, opts: TickOpts): void {
   if (world.tindeqConnected) {
     world.tindeqSmoothedKilograms +=
       (world.tindeqKilograms - world.tindeqSmoothedKilograms) * 0.2;
-    const bottomBound = groundY - 12;
-    const topBound = 38;
-    world.climber.y =
-      bottomBound - (world.tindeqSmoothedKilograms / 70) * (bottomBound - topBound) - 8;
+    world.climber.y = waistYForHeight(world.tindeqSmoothedKilograms, groundY) - 8;
   } else {
     if (world.keysUp) world.climber.y -= MOVE_SPEED;
     if (world.keysDown) world.climber.y += MOVE_SPEED;
@@ -41,11 +39,9 @@ export function tickWorld(world: World, opts: TickOpts): void {
   world.tindeqMoving =
     world.tindeqConnected && Math.abs(world.climber.y - previousY) > 0.3;
 
-  const bottomBound = groundY - 12;
-  const topBound = 38;
   world.weight = Math.max(
     0,
-    Math.min(70, Math.round(((bottomBound - (world.climber.y + 8)) / (bottomBound - topBound)) * 70)),
+    Math.min(HEIGHT_SCALE_MAX, Math.round(heightForWaistY(world.climber.y + 8, groundY))),
   );
 
   // Animation timer advances when moving (faster) or on the ground (slower)
@@ -70,27 +66,47 @@ export function tickWorld(world: World, opts: TickOpts): void {
     }
   }
 
-  // Sequence engine
-  tickSequence(world, groundY);
+  // Sequence engine — spawns anchors + eases the beam/wall crest height
+  tickSequence(world, opts.viewportHeight);
 
-  // Scroll obstacles & score them when they pass
-  for (const obstacle of world.obstacles) {
-    obstacle.x -= SCROLL_SPEED;
-    if (!obstacle.scored && obstacle.x + obstacleSpan(obstacle) < world.climber.x - 20) {
-      obstacle.scored = true;
-      world.score++;
-      world.scorePops.push({
-        x: world.climber.x + 20,
-        y: world.climber.y - 30,
-        life: 1,
-        velocityY: -1,
-        text: '+1',
-      });
+  // Promote the closest upcoming unclipped anchor to 'next'
+  const upcomingAnchors = world.anchors.filter(
+    (anchor) => anchor.state !== 'hit' && anchor.x >= world.climber.x,
+  );
+  upcomingAnchors.sort((anchorA, anchorB) => anchorA.x - anchorB.x);
+  for (const anchor of world.anchors) {
+    if (anchor.state === 'locked') anchor.state = 'locked';
+  }
+  if (upcomingAnchors.length > 0 && upcomingAnchors[0].state !== 'hit') {
+    // Reset all locked, then promote the nearest one
+    for (const anchor of world.anchors) {
+      if (anchor.state === 'next') anchor.state = 'locked';
+    }
+    upcomingAnchors[0].state = 'next';
+  }
+
+  // Scroll anchors and detect clips
+  const climberWaistY = world.climber.y + 8;
+  for (const anchor of world.anchors) {
+    anchor.x -= SCROLL_SPEED;
+    if (anchor.state === 'hit') continue;
+    const withinColumn =
+      Math.abs(anchor.x - world.climber.x) <= ANCHOR_CLIP_X_TOLERANCE;
+    if (withinColumn) {
+      if (Math.abs(climberWaistY - anchor.waistY) <= ANCHOR_CLIP_HEIGHT_TOLERANCE) {
+        anchor.state = 'hit';
+        world.score++;
+        world.scorePops.push({
+          x: world.climber.x + 18,
+          y: climberWaistY - 28,
+          life: 1,
+          velocityY: -1,
+          text: 'CLIP!',
+        });
+      }
     }
   }
-  world.obstacles = world.obstacles.filter(
-    (obstacle) => obstacle.x + obstacleSpan(obstacle) > -60,
-  );
+  world.anchors = world.anchors.filter((anchor) => anchor.x > -60);
 
   // Rope sampling — push waist y every N frames
   if (world.frameNumber % ROPE_SAMPLE_FRAMES === 0) {
@@ -122,55 +138,35 @@ export function tickWorld(world: World, opts: TickOpts): void {
     scorePop.life -= 0.024;
   }
   world.scorePops = world.scorePops.filter((scorePop) => scorePop.life > 0);
-
-  // Collision — full reset of score on hit, with a 90-frame invincibility window
-  if (world.hitCooldown > 0) {
-    world.hitCooldown--;
-  } else if (checkCollision(world, groundY)) {
-    world.score = 0;
-    world.hitCooldown = 90;
-    opts.onFlash();
-    // chalk burst on hit
-    for (let i = 0; i < 4; i++) {
-      world.particles.push({
-        x: world.climber.x,
-        y: world.climber.y,
-        velocityX: (Math.random() - 0.5) * 2.5,
-        velocityY: -1.2 - Math.random() * 2,
-        life: 1,
-        decay: 0.055 + Math.random() * 0.04,
-        radius: 2 + Math.random() * 4,
-        color: '#d8d4c8',
-      });
-    }
-  }
 }
 
-function tickSequence(world: World, groundY: number): void {
+function tickSequence(world: World, viewportHeight: number): void {
   const currentEvent = world.sequenceProgram[world.sequenceIndex];
   world.sequenceTargetHeight = currentEvent && currentEvent.type === 'on' ? currentEvent.height : 0;
   world.beamDisplayHeight += (world.sequenceTargetHeight - world.beamDisplayHeight) * 0.04;
 
   if (world.sequenceProgram.length === 0) {
-    if (world.frameNumber % OBSTACLE_INTERVAL === 0) spawnObstacle(world);
+    if (world.frameNumber % ANCHOR_SPAWN_INTERVAL === 0) {
+      world.anchors.push(spawnAnchor(world, viewportHeight));
+    }
     return;
   }
-  if (!currentEvent) return; // sequence finished
+  if (!currentEvent) return;
 
-  if (currentEvent.type === 'on' && !world.sequenceEventSpawned) {
-    spawnIntervalWall(world, currentEvent.duration, currentEvent.height, groundY);
-    world.sequenceEventSpawned = true;
+  if (world.frameNumber % ANCHOR_SPAWN_INTERVAL === 0) {
+    world.anchors.push(spawnAnchor(world, viewportHeight));
   }
 
-  if (world.seconds - world.sequenceEventStartSeconds >= currentEvent.duration) {
+  // Advance events on the continuous scroll clock so the wall stays in lockstep
+  // with its own scrolling. Each event spans duration * 60 * SCROLL_SPEED pixels.
+  const eventScrollSpan = currentEvent.duration * 60 * SCROLL_SPEED;
+  if (world.backgroundScrollY - world.sequenceEventStartScroll >= eventScrollSpan) {
+    world.sequenceEventStartScroll += eventScrollSpan; // additive — no per-event drift
     world.sequenceIndex++;
-    world.sequenceEventStartSeconds = world.seconds;
-    world.sequenceEventSpawned = false;
     if (world.sequenceIndex >= world.sequenceProgram.length) {
       world.sequenceRepeatCount++;
       if (world.sequenceRepeatCount < world.sequenceRepeatMax) {
         world.sequenceIndex = 0;
-        world.sequenceEventSpawned = false;
       }
     }
   }

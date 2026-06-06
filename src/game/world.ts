@@ -1,6 +1,12 @@
-import { GROUND_OFFSET_FROM_BOTTOM, WORLD_WIDTH } from './constants';
+import {
+  GROUND_OFFSET_FROM_BOTTOM,
+  HEIGHT_METER_BOTTOM_OFFSET,
+  HEIGHT_METER_TOP_OFFSET,
+  HEIGHT_SCALE_MAX,
+  WORLD_WIDTH,
+} from './constants';
 import { createRandom } from './randomNumberGenerator';
-import type { Cloud, World } from './types';
+import type { Anchor, Cloud, World } from './types';
 
 function makeClouds(): Cloud[] {
   return Array.from({ length: 5 }, (_, i) => {
@@ -18,6 +24,23 @@ export function getGroundY(viewportHeight: number): number {
   return viewportHeight - GROUND_OFFSET_FROM_BOTTOM;
 }
 
+// The single source of truth mapping a program height value (0..HEIGHT_SCALE_MAX)
+// to the climber's waist y in world pixels. Used by the climber's force-driven
+// position, the height ruler, the target marker, and the bolt anchors so a given
+// height lines up everywhere on screen.
+export function waistYForHeight(heightValue: number, groundY: number): number {
+  const bottomBound = groundY - HEIGHT_METER_BOTTOM_OFFSET;
+  const topBound = HEIGHT_METER_TOP_OFFSET;
+  return bottomBound - (heightValue / HEIGHT_SCALE_MAX) * (bottomBound - topBound);
+}
+
+// Inverse of waistYForHeight: the height value (0..HEIGHT_SCALE_MAX) at a waist y.
+export function heightForWaistY(waistY: number, groundY: number): number {
+  const bottomBound = groundY - HEIGHT_METER_BOTTOM_OFFSET;
+  const topBound = HEIGHT_METER_TOP_OFFSET;
+  return ((bottomBound - waistY) / (bottomBound - topBound)) * HEIGHT_SCALE_MAX;
+}
+
 export function createInitialWorld(viewportHeight: number): World {
   const groundY = getGroundY(viewportHeight);
   return {
@@ -31,10 +54,9 @@ export function createInitialWorld(viewportHeight: number): World {
     backgroundScrollY: 0,
     groundOffset: 0,
     flashTimer: 0,
-    hitCooldown: 0,
 
     climber: { x: 90, y: groundY - 20, width: 30, height: 44, animationTime: 0 },
-    obstacles: [],
+    anchors: [] as Anchor[],
     ropePoints: [],
     particles: [],
     scorePops: [],
@@ -44,7 +66,7 @@ export function createInitialWorld(viewportHeight: number): World {
     sequenceRepeatMax: 1,
     sequenceIndex: 0,
     sequenceRepeatCount: 0,
-    sequenceEventStartSeconds: 0,
+    sequenceEventStartScroll: 0,
     sequenceEventSpawned: false,
     sequenceTargetHeight: 0,
     beamDisplayHeight: 0,
@@ -64,7 +86,7 @@ export function resetForNewGame(world: World, viewportHeight: number): void {
   world.climber.x = 90;
   world.climber.y = groundY - 20;
   world.climber.animationTime = 0;
-  world.obstacles.length = 0;
+  world.anchors.length = 0;
   world.ropePoints.length = 0;
   world.particles.length = 0;
   world.scorePops.length = 0;
@@ -75,10 +97,9 @@ export function resetForNewGame(world: World, viewportHeight: number): void {
   world.frameNumber = 0;
   world.backgroundScrollY = 0;
   world.groundOffset = 0;
-  world.hitCooldown = 0;
   world.sequenceIndex = 0;
   world.sequenceRepeatCount = 0;
-  world.sequenceEventStartSeconds = 0;
+  world.sequenceEventStartScroll = 0;
   world.sequenceEventSpawned = false;
   world.sequenceTargetHeight = 0;
   world.beamDisplayHeight = 0;

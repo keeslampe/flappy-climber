@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "mcp__Claude_Preview__preview_start",
-      "Bash(cat /Users/kees/downloads/assets/radkid/05-fall.jsx)"
+      "Bash(cat /Users/kees/downloads/assets/radkid/05-fall.jsx)",
+      "Bash(/bin/sh ~/.claude/statusline-command.sh)",
+      "Bash(echo \"[end, exit:$?]\")"
     ]
   }
 }

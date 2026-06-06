@@ -6,8 +6,6 @@ interface Props {
   lastSeconds: number | null;
   seqText: string;
   setSeqText: (s: string) => void;
-  showBeam: boolean;
-  setShowBeam: (v: boolean) => void;
   showDebug: boolean;
   setShowDebug: (v: boolean) => void;
   onStart: () => void;
@@ -23,8 +21,6 @@ export function Overlay(props: Props) {
     lastSeconds,
     seqText,
     setSeqText,
-    showBeam,
-    setShowBeam,
     showDebug,
     setShowDebug,
     onStart,
@@ -91,14 +87,11 @@ export function Overlay(props: Props) {
       <label className="toggle-row">
         <input type="checkbox" checked={showDebug} onChange={(e) => setShowDebug(e.target.checked)} /> DEBUG OVERLAY
       </label>
-      <label className="toggle-row">
-        <input type="checkbox" checked={showBeam} onChange={(e) => setShowBeam(e.target.checked)} /> SHOW GUIDE BEAM
-      </label>
 
       <div className="hint">
         Hold ↑ / ↓ to climb · or use Tindeq
         <br />
-        dodge the boulders &amp; walls
+        match height to clip the bolt anchors
       </div>
     </div>
   );

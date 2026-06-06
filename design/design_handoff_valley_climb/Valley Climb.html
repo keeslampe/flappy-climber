@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Climber — Valley Climb</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root { --ink: #1A1A1A; --cream: #FFF6E5; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #0e1116; }
+  body { font-family: 'Space Grotesk', system-ui, sans-serif; display: grid; place-items: center; }
+
+  /* full-viewport stage that letterboxes the portrait scene */
+  #stage { position: fixed; inset: 0; display: grid; place-items: center; }
+  #frame {
+    position: relative; width: 380px; height: 760px; max-height: 96vh; aspect-ratio: 380 / 760;
+    border-radius: 30px; overflow: hidden; background: #000;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.55), 0 2px 0 rgba(255,255,255,0.06) inset;
+  }
+
+  .mc-chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(26,26,26,0.78); color: var(--cream);
+    font: 700 11px/1 'Space Grotesk', sans-serif; letter-spacing: 0.04em;
+    text-transform: uppercase; padding: 6px 9px; border-radius: 999px;
+    border: 1.5px solid rgba(255,246,229,0.22); backdrop-filter: blur(2px);
+  }
+  .mc-chip .mc-dot { width: 7px; height: 7px; border-radius: 50%; background: #1FD5C8; box-shadow: 0 0 0 2px rgba(31,213,200,0.3); }
+
+  @keyframes anchorPulse { 0%,100% { opacity: 0.85; transform: scale(1); } 50% { opacity: 0.3; transform: scale(1.18); } }
+  .anchor-pulse { animation: anchorPulse 1.6s ease-in-out infinite; }
+  @media (prefers-reduced-motion: reduce) { .anchor-pulse { animation: none; } }
+</style>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet" />
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" src="climbers/radkid/01-idle.jsx"></script>
+<script type="text/babel" src="assets/env-sky.jsx"></script>
+<script type="text/babel" src="assets/env-wall.jsx"></script>
+<script type="text/babel" src="mountain-climb-scene.jsx"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+(function () {
+const useTweaks = window.useTweaks, TweaksPanel = window.TweaksPanel, TweakSection = window.TweakSection, TweakSlider = window.TweakSlider, TweakToggle = window.TweakToggle;
+
+const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+  "mtnHeight": 35,
+  "groundOn": true,
+  "sunX": 81,
+  "sunY": 22,
+  "sunSize": 56,
+  "cloudsOn": true,
+  "cloudHeight": 19,
+  "groundRise": 6
+}/*EDITMODE-END*/;
+
+// Valley Floor DNA, with everything height-related driven by tweaks.
+function buildCfg(t) {
+  const h = t.mtnHeight;
+  return {
+    name: 'Valley Climb',
+    seed: 13, rock: 'granite', rockSeed: 5,
+    sky: ['#5BB8EE', '#8FD2F2', '#CDEBF8'],
+    farFill: '#AFC8DC', midFill: '#88A8C6', haze: '#DCEBF6',
+    faceTint: 'rgba(180,220,255,0.42)', faceSnow: false, snow: true,
+    rim: '#FFFFFF', sling: '#FF3D8A', route: '#FFD23F',
+    ridge: [[0,52],[10,44],[20,48],[30,38],[40,40],[50,30],[58,26],[66,21],[74,30],[84,50],[92,68],[100,84]],
+    // background range height, driven by one slider
+    farN: 9, midN: 7,
+    farBase: 60 - h * 0.06, farAmp: 8 + h * 0.30,
+    midBase: 54 - h * 0.05, midAmp: 6 + h * 0.22,
+    // big low summit sun (from Summit Sun), now fully positionable + resizable
+    sun: { x: t.sunX, y: t.sunY, color: '#FFF3C8', opacity: 1, size: t.sunSize, disc: t.sunSize * 0.3 },
+    // two clouds spread around an adjustable centre height
+    clouds: t.cloudsOn ? [
+      { x: 70, y: t.cloudHeight - 4, w: 26, v: 'b', o: 0.9 },
+      { x: 30, y: t.cloudHeight + 4, w: 20, v: 'c', o: 0.8 },
+    ] : [],
+    ground: t.groundOn ? { y: 100 - t.groundRise, color: '#3E6B43', top: '#5E8C4E', haze: '#CFE3D6', rim: '#1A1A1A' } : null,
+    alt: '2,050 m',
+  };
+}
+
+function App() {
+  const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+  const cfg = buildCfg(t);
+  return (
+    <div id="stage">
+      <div id="frame">
+        <MountainClimbScene cfg={cfg} />
+      </div>
+
+      <TweaksPanel title="Tweaks">
+        <TweakSection label="Mountains" />
+        <TweakSlider label="Peak height" value={t.mtnHeight} min={0} max={100} unit="%"
+          onChange={(v) => setTweak('mtnHeight', v)} />
+
+        <TweakSection label="Sun" />
+        <TweakSlider label="Horizontal" value={t.sunX} min={0} max={100} unit="%"
+          onChange={(v) => setTweak('sunX', v)} />
+        <TweakSlider label="Height" value={t.sunY} min={2} max={70} unit="%"
+          onChange={(v) => setTweak('sunY', v)} />
+        <TweakSlider label="Size" value={t.sunSize} min={16} max={100} unit="%"
+          onChange={(v) => setTweak('sunSize', v)} />
+
+        <TweakSection label="Clouds" />
+        <TweakToggle label="Show clouds" value={t.cloudsOn} onChange={(v) => setTweak('cloudsOn', v)} />
+        <TweakSlider label="Cloud height" value={t.cloudHeight} min={4} max={48} unit="%"
+          onChange={(v) => setTweak('cloudHeight', v)} />
+
+        <TweakSection label="Ground" />
+        <TweakToggle label="Show ground" value={t.groundOn} onChange={(v) => setTweak('groundOn', v)} />
+        <TweakSlider label="Ground height" value={t.groundRise} min={2} max={42} unit="%"
+          onChange={(v) => setTweak('groundRise', v)} />
+      </TweaksPanel>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+})();
+</script>
+</body>
+</html>

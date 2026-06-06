@@ -8,38 +8,13 @@ export interface Climber {
   animationTime: number;
 }
 
-export interface Boulder {
-  offsetX: number;
-  radius: number;
-  squish: number;
+export interface Anchor {
+  x: number;
+  heightMeters: number;
+  waistY: number;
+  state: 'locked' | 'next' | 'hit';
   seed: number;
 }
-
-export type Obstacle =
-  | {
-      kind: 'boulder';
-      x: number;
-      boulders: Boulder[];
-      totalWidth: number;
-      seed: number;
-      scored: boolean;
-    }
-  | {
-      kind: 'wall';
-      x: number;
-      wallWidth: number;
-      wallHeight: number;
-      seed: number;
-      scored: boolean;
-    }
-  | {
-      kind: 'interval';
-      x: number;
-      wallWidth: number;
-      wallHeight: number;
-      seed: number;
-      scored: boolean;
-    };
 
 export interface Particle {
   x: number;
@@ -82,10 +57,9 @@ export interface World {
   backgroundScrollY: number;
   groundOffset: number;
   flashTimer: number;
-  hitCooldown: number;
 
   climber: Climber;
-  obstacles: Obstacle[];
+  anchors: Anchor[];
   ropePoints: number[];
   particles: Particle[];
   scorePops: ScorePop[];
@@ -96,7 +70,7 @@ export interface World {
   sequenceRepeatMax: number;
   sequenceIndex: number;
   sequenceRepeatCount: number;
-  sequenceEventStartSeconds: number;
+  sequenceEventStartScroll: number;
   sequenceEventSpawned: boolean;
   sequenceTargetHeight: number;
   beamDisplayHeight: number;

@@ -2,7 +2,7 @@
 html, body, #root {
   width: 100%;
   height: 100%;
-  background: #FFB47A;
+  background: #5BB8EE;
   overflow: hidden;
   font-family: 'JetBrains Mono', ui-monospace, 'Courier New', monospace;
   touch-action: none;
@@ -220,4 +220,15 @@ html, body, #root {
   line-height: 1.6;
   font-weight: 700;
   box-shadow: 3px 3px 0 rgba(0,0,0,0.4);
+}
+
+@keyframes anchor-pulse {
+  0%, 100% { opacity: 0.85; transform: scale(1); }
+  50%       { opacity: 0.3;  transform: scale(1.18); }
+}
+.anchor-pulse {
+  animation: anchor-pulse 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .anchor-pulse { animation: none; }
 }

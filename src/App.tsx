@@ -8,13 +8,13 @@ import { Climber } from './components/Climber';
 import { DebugPanel } from './components/DebugPanel';
 import { DirectionalPad } from './components/DirectionalPad';
 import { Ground } from './components/Ground';
-import { GuideBeam } from './components/GuideBeam';
 import { HeadsUpDisplay } from './components/HeadsUpDisplay';
 import { HeightMeter } from './components/HeightMeter';
-import { Obstacles } from './components/Obstacles';
 import { Overlay } from './components/Overlay';
+import { BoltAnchors } from './visual/BoltAnchor';
+import { ClimbingWall } from './visual/ClimbingWall';
 import { Clouds } from './visual/Clouds';
-import { MidgroundHills } from './visual/MidgroundHills';
+import { HorizonHaze } from './visual/HorizonHaze';
 import { Mountains } from './visual/Mountains';
 import { Particles } from './visual/Particles';
 import { Rope } from './visual/Rope';
@@ -22,6 +22,7 @@ import { ScorePops } from './visual/ScorePops';
 import { Sky } from './visual/Sky';
 import { Sun } from './visual/Sun';
 import { Trees } from './visual/Trees';
+import { ValleyFloor } from './visual/ValleyFloor';
 import { useGameLoop } from './hooks/useGameLoop';
 import { useKeyboard } from './hooks/useKeyboard';
 import { useTindeq } from './hooks/useTindeq';
@@ -31,8 +32,6 @@ const DEFAULT_SEQ = `8 seconds on 20 height
 repeat this 5 times`;
 
 export default function App() {
-  // Viewport-driven dimensions. The SVG renders into a logical WORLD_WIDTH × logicalHeight
-  // coordinate space and stretches to fill the viewport.
   const [viewport, setViewport] = useState(() => ({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -46,19 +45,14 @@ export default function App() {
   const logicalHeight = Math.ceil(viewport.height / scale);
   const groundY = getGroundY(logicalHeight);
 
-  // World state lives in a ref — RAF mutates it in place. A tick counter in
-  // React state forces a re-render every animation frame.
   const worldRef = useRef(createInitialWorld(logicalHeight));
   const [, setTick] = useState(0);
   const tindeq = useTindeq();
   const [seqText, setSeqText] = useState(DEFAULT_SEQ);
-  const [showBeam, setShowBeam] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [bestScore, setBestScore] = useState(0);
   const [lastRun, setLastRun] = useState<{ score: number; seconds: number } | null>(null);
-  const [flashAlpha, setFlashAlpha] = useState(0);
-  const flashTimeoutRef = useRef<number | null>(null);
 
   const startGame = useCallback(() => {
     const world = worldRef.current;
@@ -83,25 +77,15 @@ export default function App() {
   const setDown = useCallback((value: boolean) => { worldRef.current.keysDown = value; }, []);
   useKeyboard({ setUp, setDown, onEscape: returnToMenu });
 
-  // Expose for debugging in dev only
   if (import.meta.env.DEV) {
     (window as unknown as { __world?: unknown }).__world = worldRef.current;
   }
 
-  // Game loop — drives physics, then bumps the tick counter to re-render.
   useGameLoop(() => {
     const world = worldRef.current;
-    // Mirror Tindeq connection state + raw reading into world for tick logic.
     world.tindeqConnected = tindeq.connected;
     world.tindeqKilograms = tindeq.readingRef.current;
-    tickWorld(world, {
-      viewportHeight: logicalHeight,
-      onFlash: () => {
-        setFlashAlpha(0.55);
-        if (flashTimeoutRef.current) window.clearTimeout(flashTimeoutRef.current);
-        flashTimeoutRef.current = window.setTimeout(() => setFlashAlpha(0), 120);
-      },
-    });
+    tickWorld(world, { viewportHeight: logicalHeight });
     setTick((tick) => (tick + 1) | 0);
   });
 
@@ -118,12 +102,11 @@ export default function App() {
         <Sun worldWidth={WORLD_WIDTH} />
         <Clouds clouds={world.clouds} />
         <Mountains worldWidth={WORLD_WIDTH} groundY={groundY} backgroundScrollY={world.backgroundScrollY} />
-        <MidgroundHills worldWidth={WORLD_WIDTH} groundY={groundY} backgroundScrollY={world.backgroundScrollY} />
-        <Trees layer={0} worldWidth={WORLD_WIDTH} groundY={groundY} backgroundScrollY={world.backgroundScrollY} />
-        <Trees layer={1} worldWidth={WORLD_WIDTH} groundY={groundY} backgroundScrollY={world.backgroundScrollY} />
+        <HorizonHaze worldWidth={WORLD_WIDTH} groundY={groundY} />
+        <ValleyFloor worldWidth={WORLD_WIDTH} groundY={groundY} />
+        <ClimbingWall world={world} worldWidth={WORLD_WIDTH} groundY={groundY} />
+        <BoltAnchors world={world} groundY={groundY} />
         <Ground worldWidth={WORLD_WIDTH} groundY={groundY} viewportHeight={logicalHeight} groundOffset={world.groundOffset} />
-        <Obstacles world={world} groundY={groundY} />
-        {showBeam && <GuideBeam world={world} groundY={groundY} />}
         <Rope world={world} />
         <Climber world={world} />
         <Particles world={world} />
@@ -132,8 +115,6 @@ export default function App() {
       </svg>
 
       <HeadsUpDisplay seconds={world.seconds} score={world.score} weight={world.weight} />
-
-      <div className="flash" style={{ background: `rgba(255,61,138,${flashAlpha})` }} />
 
       {showDebug && (
         <DebugPanel
@@ -156,8 +137,6 @@ export default function App() {
           lastSeconds={lastRun?.seconds ?? null}
           seqText={seqText}
           setSeqText={setSeqText}
-          showBeam={showBeam}
-          setShowBeam={setShowBeam}
           showDebug={showDebug}
           setShowDebug={setShowDebug}
           onStart={startGame}
