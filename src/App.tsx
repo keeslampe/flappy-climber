@@ -32,6 +32,10 @@ const DEFAULT_SEQ = `8 seconds on 20 height
 10 seconds rest
 repeat this 5 times`;
 
+// The simulation advances in fixed real-time steps (60 per second) so motion and
+// the workout timer are independent of the display's refresh rate.
+const FIXED_STEP_SECONDS = 1 / 60;
+
 export default function App() {
   const [viewport, setViewport] = useState(() => ({
     width: window.innerWidth,
@@ -82,11 +86,20 @@ export default function App() {
     (window as unknown as { __world?: unknown }).__world = worldRef.current;
   }
 
-  useGameLoop(() => {
+  const stepAccumulatorRef = useRef(0);
+  useGameLoop((deltaSeconds) => {
     const world = worldRef.current;
     world.tindeqConnected = tindeq.connected;
     world.tindeqKilograms = tindeq.readingRef.current;
-    tickWorld(world, { viewportHeight: logicalHeight });
+
+    // Fixed-timestep: advance the simulation in real 1/60s steps so the game and
+    // the workout timer run at real seconds regardless of the display refresh rate.
+    // Clamp the backlog so a stall (e.g. a backgrounded tab) can't spiral.
+    stepAccumulatorRef.current = Math.min(stepAccumulatorRef.current + deltaSeconds, 0.25);
+    while (stepAccumulatorRef.current >= FIXED_STEP_SECONDS) {
+      tickWorld(world, { viewportHeight: logicalHeight });
+      stepAccumulatorRef.current -= FIXED_STEP_SECONDS;
+    }
     setTick((tick) => (tick + 1) | 0);
   });
 
