@@ -72,6 +72,11 @@ export default function App() {
   const lastProgramNameRef = useRef('');
 
   const startGame = useCallback(() => {
+    // Best-effort fullscreen so the browser address bar disappears (no-op in an
+    // already-fullscreen installed PWA, or where the API is unavailable). Runs inside
+    // the SEND IT tap, which is the user gesture the Fullscreen API requires.
+    document.documentElement.requestFullscreen?.()?.catch(() => {});
+
     const world = worldRef.current;
     resetForNewGame(world, logicalHeight);
     const program = programsStore.selectedProgram;
