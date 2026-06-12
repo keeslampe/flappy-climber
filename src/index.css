@@ -28,6 +28,18 @@ html, body, #root {
   display: block;
 }
 
+/* Overlay SVG for the height ruler — same coordinate space as .world but stacked
+   above the HUD pills so the kg labels stay readable. Non-interactive. */
+.hud-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  z-index: 6;
+  pointer-events: none;
+}
+
 /* HUD */
 .hud {
   position: fixed;

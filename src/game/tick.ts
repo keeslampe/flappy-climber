@@ -21,6 +21,15 @@ interface TickOpts {
 export function tickWorld(world: World, opts: TickOpts): void {
   if (world.status !== 'playing') return;
   const groundY = getGroundY(opts.viewportHeight);
+
+  // Keep every clip's vertical position on the live height scale. The viewport — and
+  // therefore groundY — changes mid-run on mobile (address bar show/hide, entering
+  // fullscreen), so a waistY frozen at spawn would drift out of alignment with the
+  // wall (which is recomputed live each frame). Re-project from the kept heightMeters.
+  for (const anchor of world.anchors) {
+    anchor.waistY = waistYForHeight(anchor.heightMeters, groundY);
+  }
+
   world.frameNumber++;
   world.backgroundScrollY += SCROLL_SPEED;
   world.groundOffset += SCROLL_SPEED;

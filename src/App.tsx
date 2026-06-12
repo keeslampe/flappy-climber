@@ -8,7 +8,6 @@ import { usePrograms } from './hooks/usePrograms';
 
 import { Climber } from './components/Climber';
 import { DebugPanel } from './components/DebugPanel';
-import { DirectionalPad } from './components/DirectionalPad';
 import { Ground } from './components/Ground';
 import { HeadsUpDisplay } from './components/HeadsUpDisplay';
 import { HeightMeter } from './components/HeightMeter';
@@ -67,6 +66,9 @@ export default function App() {
   // Timestamp of the last resume — a short window where taps can't re-pause, so the
   // very tap that resumes (or a stray follow-up touch) doesn't immediately pause again.
   const resumeAtRef = useRef(0);
+  // Timestamp the menu was (re)shown — blocks SEND IT briefly so the tap that quit to
+  // the menu doesn't bleed through onto the start button underneath it.
+  const overlayShownAtRef = useRef(0);
   const [bestScore, setBestScore] = useState(0);
   const [lastRun, setLastRun] = useState<
     { score: number; seconds: number; kg: number; programName: string } | null
@@ -75,6 +77,10 @@ export default function App() {
   const lastProgramNameRef = useRef('');
 
   const startGame = useCallback(() => {
+    // Ignore a SEND IT that arrives right after the menu appeared — it's almost
+    // certainly the tap that quit to the menu bleeding through onto the button.
+    if (performance.now() - overlayShownAtRef.current < 500) return;
+
     // Best-effort fullscreen so the browser address bar disappears (no-op in an
     // already-fullscreen installed PWA, or where the API is unavailable). Runs inside
     // the SEND IT tap, which is the user gesture the Fullscreen API requires.
@@ -132,6 +138,7 @@ export default function App() {
     if (world.score > bestScore) setBestScore(world.score);
     setShowResults(false);
     setShowOverlay(true);
+    overlayShownAtRef.current = performance.now();
   }, [bestScore]);
 
   // Tapping the play area freezes the run; resuming shifts gameStartTime forward by
@@ -221,8 +228,16 @@ export default function App() {
         <Particles world={world} />
         <ScorePops world={world} />
         <HandSwitchBubble world={world} />
-        <HeightMeter world={world} groundY={groundY} />
         {showDebug && showTargetLine && <ProgramTargetLine world={world} groundY={groundY} />}
+      </svg>
+
+      {/* Height ruler in its own overlay SVG so it sits above the HUD pills. */}
+      <svg
+        className="hud-svg"
+        viewBox={`0 0 ${WORLD_WIDTH} ${logicalHeight}`}
+        preserveAspectRatio="none"
+      >
+        <HeightMeter world={world} groundY={groundY} />
       </svg>
 
       <HeadsUpDisplay seconds={world.seconds} score={world.score} weight={world.weight} hand={world.currentHand} />
@@ -240,12 +255,11 @@ export default function App() {
       )}
 
       {/* Transparent layer over the play area: a tap here pauses the run. Sits below
-          the HUD and menu button (so those still work) and above the world SVG. */}
+          the HUD (so it stays visible) and above the world SVG. The menu is reached
+          from the pause screen. */}
       {world.status === 'playing' && !paused && (
         <div className="pause-catcher" onClick={pauseGame} />
       )}
-
-      <DirectionalPad onMenu={returnToMenu} />
 
       {paused && <PauseScreen onResume={resumeGame} onMenu={returnToMenu} />}
 
@@ -259,6 +273,7 @@ export default function App() {
           onClose={() => {
             setShowResults(false);
             setShowOverlay(true);
+            overlayShownAtRef.current = performance.now();
           }}
         />
       )}

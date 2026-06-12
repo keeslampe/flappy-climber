@@ -1,6 +1,8 @@
 // Logical world dimensions and physics constants.
-// The world renders into a fixed-width SVG that scales to the viewport.
-export const WORLD_WIDTH = 360;
+// The world renders into a fixed-width SVG that scales to the viewport. Width is set
+// to 3 clip spacings (clips are ANCHOR_SPACING_PIXELS = 90 apart) so ~3 clips are
+// visible at once — a narrower world also means bigger on-screen elements.
+export const WORLD_WIDTH = 270;
 export const GROUND_OFFSET_FROM_BOTTOM = 60;
 
 export const MOVE_SPEED = 3.0;
