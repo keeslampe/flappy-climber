@@ -66,7 +66,7 @@ export function HandSwitchBubble({ world }: Props) {
           fontSize={16}
           fill="#1A1A1A"
         >
-          SWITCH!
+          {cue.isStart ? 'START!' : 'SWITCH!'}
         </text>
         <text
           x={0}

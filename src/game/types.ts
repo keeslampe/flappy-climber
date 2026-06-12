@@ -96,7 +96,8 @@ export interface World {
   // now (shown in the HUD pill + on the sprite); null when the program has no hand
   // switching. handSwitchCue drives the transient "scream" bubble and fades out.
   currentHand: Hand | null;
-  handSwitchCue: { hand: Hand; life: number } | null;
+  // isStart marks the cue shown at the gun (the starting hand) vs a mid-run switch.
+  handSwitchCue: { hand: Hand; life: number; isStart?: boolean } | null;
 
   // Scroll offset (px) where the last pull ends. Clips stop spawning past this so the
   // final rest before the flag is empty. 0 = no program / no pull.

@@ -56,7 +56,7 @@ export default function App() {
   const [, setTick] = useState(0);
   const tindeq = useTindeq();
   const programsStore = usePrograms();
-  const [showDebug, setShowDebug] = useState(true);
+  const [showDebug, setShowDebug] = useState(false);
   const [showTargetLine, setShowTargetLine] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [showResults, setShowResults] = useState(false);
@@ -89,7 +89,8 @@ export default function App() {
       world.sequenceRepeatMax = 1;
     }
     world.currentHand = initialHand;
-    world.handSwitchCue = null;
+    // Scream the starting hand at the gun, like a switch cue.
+    world.handSwitchCue = initialHand ? { hand: initialHand, life: 1, isStart: true } : null;
     lastProgramNameRef.current = program?.name ?? '';
     setPaused(false);
     // Clips stop at the last pull; the finish flag follows 4 seconds later, leaving
