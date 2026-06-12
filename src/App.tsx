@@ -32,6 +32,7 @@ import { ValleyFloor } from './visual/ValleyFloor';
 import { useGameLoop } from './hooks/useGameLoop';
 import { useKeyboard } from './hooks/useKeyboard';
 import { useTindeq } from './hooks/useTindeq';
+import { useWakeLock } from './hooks/useWakeLock';
 
 // The simulation advances in fixed real-time steps (60 per second) so motion and
 // the workout timer are independent of the display's refresh rate.
@@ -54,6 +55,7 @@ export default function App() {
   const worldRef = useRef(createInitialWorld(logicalHeight));
   const [, setTick] = useState(0);
   const tindeq = useTindeq();
+  const requestWakeLock = useWakeLock();
   const programsStore = usePrograms();
   const [showDebug, setShowDebug] = useState(false);
   const [showTargetLine, setShowTargetLine] = useState(false);
@@ -85,6 +87,8 @@ export default function App() {
     // already-fullscreen installed PWA, or where the API is unavailable). Runs inside
     // the SEND IT tap, which is the user gesture the Fullscreen API requires.
     document.documentElement.requestFullscreen?.()?.catch(() => {});
+    // Keep the screen awake during the run (Android Chrome).
+    requestWakeLock();
 
     const world = worldRef.current;
     resetForNewGame(world, logicalHeight);
@@ -122,7 +126,7 @@ export default function App() {
     resumeAtRef.current = performance.now();
     setShowResults(false);
     setShowOverlay(false);
-  }, [logicalHeight, programsStore.selectedProgram]);
+  }, [logicalHeight, programsStore.selectedProgram, requestWakeLock]);
 
   const returnToMenu = useCallback(() => {
     const world = worldRef.current;

@@ -1,6 +1,7 @@
 import {
   ANCHOR_CLIP_HEIGHT_TOLERANCE,
   ANCHOR_CLIP_X_TOLERANCE,
+  ANCHOR_SPACING_PIXELS,
   ANCHOR_SPAWN_INTERVAL,
   HAND_SWITCH_CUE_DELAY_SECONDS,
   HEIGHT_SCALE_MAX,
@@ -11,6 +12,7 @@ import {
   WORLD_WIDTH,
 } from './constants';
 import { spawnAnchor } from './anchors';
+import { targetHeightAtDistance } from './mountainProfile';
 import { getGroundY, heightForWaistY, waistYForHeight } from './world';
 import type { World } from './types';
 
@@ -254,6 +256,31 @@ function tickSequence(world: World, viewportHeight: number): void {
     const arrivalScroll = world.backgroundScrollY + pixelsAhead;
     if (world.lastPullScroll === 0 || arrivalScroll < world.lastPullScroll) {
       world.anchors.push(spawnAnchor(world, viewportHeight));
+    }
+  }
+
+  // Stepping-stone: halfway between regular spawns, drop one clip at half the pull
+  // height between the last ground clip and the first clip of a pull — so you step up
+  // to the target instead of jumping straight from the ground.
+  if (world.frameNumber % ANCHOR_SPAWN_INTERVAL === ANCHOR_SPAWN_INTERVAL / 2) {
+    const pixelsAhead = WORLD_WIDTH + 30 - world.climber.x;
+    const arrivalScroll = world.backgroundScrollY + pixelsAhead;
+    const halfSpacing = ANCHOR_SPACING_PIXELS / 2;
+    const heightAhead = targetHeightAtDistance(world, pixelsAhead + halfSpacing);
+    const heightBehind = targetHeightAtDistance(world, pixelsAhead - halfSpacing);
+    const inBounds = world.lastPullScroll === 0 || arrivalScroll < world.lastPullScroll;
+    if (inBounds && heightAhead > 0 && heightBehind === 0) {
+      const groundY = getGroundY(viewportHeight);
+      const stepHeight = heightAhead / 2;
+      world.anchors.push({
+        x: WORLD_WIDTH + 30,
+        heightMeters: stepHeight,
+        waistY: waistYForHeight(stepHeight, groundY),
+        state: 'locked',
+        seed: Math.floor(Math.random() * 10000),
+        label: null,
+        isFinish: false,
+      });
     }
   }
 
