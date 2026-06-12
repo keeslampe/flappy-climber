@@ -29,7 +29,7 @@ export function ResultsScreen({ score, seconds, kg, best, programName, onClose }
           <div className="hud-value">{score}</div>
         </div>
         <div className="hud-box kg">
-          <div className="hud-label">KG</div>
+          <div className="hud-label">MAX KG</div>
           <div className="hud-value">{kg}kg</div>
         </div>
       </div>

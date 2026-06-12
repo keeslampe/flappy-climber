@@ -45,8 +45,16 @@ bolt-anchor "clips" at target heights — match your height as a clip passes to 
 - **All rendering is SVG/DOM**, never canvas. Game state mutates inside a `useRef`
   (`worldRef`) to avoid re-render storms; a `useState` tick counter forces one redraw
   per animation frame.
+- **The whole tree re-renders every frame**, so anything heavy and static must be kept
+  off the per-frame path or mobile lags. The cautionary example is `ClimbingWall`: its
+  rock texture (hundreds of SVG nodes) is built once in a `useMemo` keyed on wall size
+  and drawn through a `memo`'d `WallTexturePanel`, so only the two scroll transforms
+  change each frame. Don't recompute seeded static art in the render body.
 - **Web Bluetooth** to the Tindeq Progressor force sensor lives in
   `src/hooks/useTindeq.ts`; the kg reading drives the climber's vertical position.
+- **Persistence** is localStorage only: custom programs + selected id (`usePrograms`),
+  and all-time best score / max kg (`App.tsx`, keys `flappy-climber.bestScore` /
+  `.maxKilograms`). Built-in programs always come from code, never storage.
 
 ## Fixed-timestep loop
 
@@ -63,15 +71,24 @@ Every vertical position goes through one mapping so they line up on screen. **Do
 add a second scale.** `world.ts` owns it:
 
 - `waistYForHeight(value, groundY)` maps a program height `0..HEIGHT_SCALE_MAX` (kg, set
-  to 50) to the climber's waist pixel `y`, between `HEIGHT_METER_TOP_OFFSET` (38) and
-  `groundY - HEIGHT_METER_BOTTOM_OFFSET` (12). `heightForWaistY` is the inverse.
-- Used by: the climber's force-driven position and the weight HUD (`tick.ts`), the ruler
-  ticks + teal target marker (`HeightMeter.tsx`), the bolt anchors (`anchors.ts`), and
-  the wall crest (`mountainProfile.ts`). The waist anchor is `climber.y + 8`.
+  to 50) to the climber's waist pixel `y`, between `HEIGHT_METER_TOP_OFFSET` (64 — low
+  enough that the 50 kg tick clears the HUD pills) and `groundY -
+  HEIGHT_METER_BOTTOM_OFFSET` (12). `heightForWaistY` is the inverse.
+- Used by: the climber's force-driven position and the weight HUD (`tick.ts`), the left
+  ruler (`HeightMeter.tsx`), the bolt anchors (`anchors.ts`), the wall crest
+  (`mountainProfile.ts`), and the green hill crest (`ValleyFloor.tsx`, pinned to 20 kg).
+  The waist anchor is `climber.y + 8`.
 
-Coordinates: the SVG renders into a logical `WORLD_WIDTH (420) × logicalHeight` space
-(`logicalHeight` from viewport aspect), stretched with `preserveAspectRatio="none"`.
-`groundY = logicalHeight - GROUND_OFFSET_FROM_BOTTOM (60)`.
+`HeightMeter` lives in its own overlay SVG and is a thin left ruler; it starts just
+above the top (50 kg) tick — which `HEIGHT_METER_TOP_OFFSET` keeps below the HUD pills —
+and runs to the ground. Labels sit just under their tick marks.
+
+Coordinates: the SVG renders into a logical `WORLD_WIDTH (270, = 3 clip spacings) ×
+logicalHeight` space (`logicalHeight` from viewport aspect), stretched with
+`preserveAspectRatio="none"`. `groundY = logicalHeight - GROUND_OFFSET_FROM_BOTTOM (26)`.
+The ground band is split (`GroundBase`) into a fixed-height grass cap at the top — so
+the climber's feet land on green no matter how thin the band — and a squashed dirt strip
+below; do not collapse it back into one stretched tile.
 
 ## Workout DSL & the program clock
 
@@ -119,6 +136,13 @@ after a pull is lifted to the pull height. States are `locked | next | hit`; onl
 The game never truly "ends" — Escape, the ☰ button, or the program finishing calls
 `returnToMenu()`. A clip increments `score` and pushes a "CLIP!" score pop; there is no
 collision, score reset, hurt frame, or invincibility (all removed).
+
+Touch UX guards (don't remove without understanding them): a tap that quits to the menu
+can bleed through onto the button now under the finger, so the menu is briefly
+**`menuLocked`** (pointer-events disabled on its buttons for ~600 ms) and `startGame`
+ignores a SEND IT within 500 ms of the menu appearing. Fullscreen on SEND IT is gated to
+**real mobile via a user-agent test** (`/Android|iPhone|iPad|iPod|Mobile/`), not
+touch/pointer checks — those also fire in Chrome DevTools responsive mode.
 
 ## Procedural art
 

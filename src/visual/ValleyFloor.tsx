@@ -1,4 +1,5 @@
 import { PALETTE } from '../game/constants';
+import { waistYForHeight } from '../game/world';
 
 interface Props {
   worldWidth: number;
@@ -33,9 +34,13 @@ function smoothTopPath(points: Array<[number, number]>): string {
 // Green rolling hills far below the climbing wall. Smooth, periodic crest (so the
 // tiled copies join with no vertical jump) that scrolls with a slow parallax.
 export function ValleyFloor({ worldWidth, groundY, backgroundScrollY }: Props) {
-  const baseY = groundY * 0.85;
+  // The hilltops crest at the 20 kg mark on the height ruler. amplitude is the
+  // crest-to-dip swing; baseY sits one amplitude below the 20 kg line so the
+  // tallest peaks (crest factor ~1.0) just reach it.
   const amplitude = groundY * 0.045;
-  const hillCount = 5;
+  const baseY = waistYForHeight(20, groundY) + amplitude;
+  // Fewer, broader hills → more flow / less up-and-down at the same amplitude.
+  const hillCount = 3;
   const segment = worldWidth / hillCount;
 
   const random = lcgRandom(99);

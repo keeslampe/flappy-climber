@@ -55,7 +55,7 @@ export function createInitialWorld(viewportHeight: number): World {
     groundOffset: 0,
     flashTimer: 0,
 
-    climber: { x: 90, y: groundY - 20, width: 30, height: 44, animationTime: 0 },
+    climber: { x: 90, y: groundY - 24, width: 30, height: 44, animationTime: 0 },
     climberMotion: 'none',
     heightHistoryKilograms: [],
     anchors: [] as Anchor[],
@@ -96,7 +96,7 @@ export function createInitialWorld(viewportHeight: number): World {
 export function resetForNewGame(world: World, viewportHeight: number): void {
   const groundY = getGroundY(viewportHeight);
   world.climber.x = 90;
-  world.climber.y = groundY - 20;
+  world.climber.y = groundY - 24;
   world.climber.animationTime = 0;
   world.climberMotion = 'none';
   world.heightHistoryKilograms.length = 0;

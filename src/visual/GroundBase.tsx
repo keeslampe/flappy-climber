@@ -90,21 +90,48 @@ function GroundTile({ x }: { x: number }) {
 }
 
 const TILE_WIDTH = 800;
+// The tile is 120 tall with the grass cap (green fill + blades) in its top ~30 units.
+// We draw that grass band into a FIXED-height strip so the climber's feet (which sit a
+// little below groundY) always land on green, then squash the remaining dirt into a
+// thin strip below it — independent of how short the whole ground band is.
+const TILE_GRASS_VIEWBOX = 30; // tile units allotted to the grass cap
+const GRASS_STRIP_HEIGHT = 18; // on-screen (logical) height of the grass cap
 
 export function GroundBase({ worldWidth, groundY, viewportHeight, groundOffset }: Props) {
   const scrollX = (groundOffset % worldWidth) / worldWidth * TILE_WIDTH;
+  const bandHeight = viewportHeight - groundY;
+  const grassHeight = Math.min(GRASS_STRIP_HEIGHT, bandHeight);
+  const dirtHeight = bandHeight - grassHeight;
 
   return (
-    <svg
-      x={0}
-      y={groundY}
-      width={worldWidth}
-      height={viewportHeight - groundY}
-      viewBox={`0 0 ${TILE_WIDTH} 120`}
-      preserveAspectRatio="none"
-    >
-      <GroundTile x={-scrollX} />
-      <GroundTile x={TILE_WIDTH - scrollX} />
-    </svg>
+    <>
+      {/* Grass cap — fixed height so the climber walks on green regardless of band size */}
+      <svg
+        x={0}
+        y={groundY}
+        width={worldWidth}
+        height={grassHeight}
+        viewBox={`0 0 ${TILE_WIDTH} ${TILE_GRASS_VIEWBOX}`}
+        preserveAspectRatio="none"
+      >
+        <GroundTile x={-scrollX} />
+        <GroundTile x={TILE_WIDTH - scrollX} />
+      </svg>
+
+      {/* Dirt below the grass — the remainder of the tile squashed into a thin strip */}
+      {dirtHeight > 0 && (
+        <svg
+          x={0}
+          y={groundY + grassHeight}
+          width={worldWidth}
+          height={dirtHeight}
+          viewBox={`0 ${TILE_GRASS_VIEWBOX} ${TILE_WIDTH} ${120 - TILE_GRASS_VIEWBOX}`}
+          preserveAspectRatio="none"
+        >
+          <GroundTile x={-scrollX} />
+          <GroundTile x={TILE_WIDTH - scrollX} />
+        </svg>
+      )}
+    </>
   );
 }

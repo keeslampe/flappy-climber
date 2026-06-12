@@ -128,16 +128,26 @@ html, body, #root {
   box-shadow: 5px 5px 0 #1A1A1A;
 }
 .start-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #1A1A1A; }
+
+/* Just after the menu reappears, make its buttons inert for a beat so the tap that
+   quit to the menu can't bleed through onto them (and leave them stuck-pressed). */
+.overlay.locked .start-btn,
+.overlay.locked .tindeq-btn { pointer-events: none; }
 .best { font-size: 12px; color: #FFD23F; letter-spacing: 2px; margin-top: 6px; font-weight: 700; }
 
-/* Results overview — HUD-style pills (reuse .hud-box) laid out in a row */
+/* Results overview — HUD-style pills (reuse .hud-box) kept in a single row */
 .result-pills {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   justify-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 360px;
   margin: 10px 0 16px;
 }
+.result-pills .hud-box { flex: 1 1 0; min-width: 0; padding: 8px 6px; }
+.result-pills .hud-label { font-size: clamp(8px, 2.6vw, 11px); letter-spacing: 0.08em; }
+.result-pills .hud-value { font-size: clamp(15px, 5vw, 22px); letter-spacing: 0; }
 .result-back { margin-top: 22px; padding: 16px 40px; }
 .last-info { font-size: 17px; color: #FFF6E5; margin-bottom: 8px; letter-spacing: 1px; font-weight: 700; }
 .hint { font-size: 11px; color: #999; margin-top: 18px; text-align: center; line-height: 2; letter-spacing: 1px; }
@@ -398,6 +408,14 @@ html, body, #root {
   font-weight: 700;
 }
 .toggle-row input { accent-color: #1FD5C8; width: 14px; height: 14px; cursor: pointer; }
+/* Debug toggle pinned to the bottom of the menu overlay. */
+.toggle-row.menu-bottom {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  margin: 0;
+}
 
 .debug-panel {
   position: fixed;

@@ -38,6 +38,28 @@ import { useWakeLock } from './hooks/useWakeLock';
 // the workout timer are independent of the display's refresh rate.
 const FIXED_STEP_SECONDS = 1 / 60;
 
+// All-time bests, persisted across sessions.
+const BEST_SCORE_KEY = 'flappy-climber.bestScore';
+const MAX_KILOGRAMS_KEY = 'flappy-climber.maxKilograms';
+
+function loadStoredNumber(key: string): number {
+  try {
+    const value = Number(localStorage.getItem(key));
+    return Number.isFinite(value) ? value : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function storeNumber(key: string, value: number): void {
+  try {
+    localStorage.setItem(key, String(value));
+  } catch {
+    // Storage may be unavailable (private mode / quota) — bests still hold for the
+    // current session, they just won't persist.
+  }
+}
+
 export default function App() {
   const [viewport, setViewport] = useState(() => ({
     width: window.innerWidth,
@@ -58,7 +80,7 @@ export default function App() {
   const requestWakeLock = useWakeLock();
   const programsStore = usePrograms();
   const [showDebug, setShowDebug] = useState(false);
-  const [showTargetLine, setShowTargetLine] = useState(false);
+  const [showTargetLine, setShowTargetLine] = useState(true);
   const [showOverlay, setShowOverlay] = useState(true);
   const [showResults, setShowResults] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
@@ -71,12 +93,36 @@ export default function App() {
   // Timestamp the menu was (re)shown — blocks SEND IT briefly so the tap that quit to
   // the menu doesn't bleed through onto the start button underneath it.
   const overlayShownAtRef = useRef(0);
-  const [bestScore, setBestScore] = useState(0);
+  const [bestScore, setBestScore] = useState(() => loadStoredNumber(BEST_SCORE_KEY));
+  const [maxKilograms, setMaxKilograms] = useState(() => loadStoredNumber(MAX_KILOGRAMS_KEY));
+  // True for a short window after the menu (re)appears — disables the menu buttons so
+  // the tap that quit to the menu can't bleed through and leave a button stuck-pressed.
+  const [menuLocked, setMenuLocked] = useState(false);
   const [lastRun, setLastRun] = useState<
     { score: number; seconds: number; kg: number; programName: string } | null
   >(null);
   // The program name in play, captured at start so the results overview is stable.
   const lastProgramNameRef = useRef('');
+
+  // Fold a finished run into the all-time bests and persist them.
+  const recordRun = useCallback((score: number, kilograms: number) => {
+    setBestScore((previous) => {
+      const next = Math.max(previous, score);
+      if (next !== previous) storeNumber(BEST_SCORE_KEY, next);
+      return next;
+    });
+    setMaxKilograms((previous) => {
+      const next = Math.max(previous, kilograms);
+      if (next !== previous) storeNumber(MAX_KILOGRAMS_KEY, next);
+      return next;
+    });
+  }, []);
+
+  // Briefly make the menu buttons non-interactive after it appears (see menuLocked).
+  const lockMenuBriefly = useCallback(() => {
+    setMenuLocked(true);
+    setTimeout(() => setMenuLocked(false), 600);
+  }, []);
 
   const startGame = useCallback(() => {
     // Ignore a SEND IT that arrives right after the menu appeared — it's almost
@@ -85,8 +131,11 @@ export default function App() {
 
     // Best-effort fullscreen so the browser address bar disappears (no-op in an
     // already-fullscreen installed PWA, or where the API is unavailable). Runs inside
-    // the SEND IT tap, which is the user gesture the Fullscreen API requires.
-    document.documentElement.requestFullscreen?.()?.catch(() => {});
+    // the SEND IT tap, which is the user gesture the Fullscreen API requires. Gated to
+    // real mobile via the user agent — touch/pointer checks fire in Chrome DevTools'
+    // responsive mode too, which made desktop dev testing go fullscreen on every run.
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if (isMobile) document.documentElement.requestFullscreen?.()?.catch(() => {});
     // Keep the screen awake during the run (Android Chrome).
     requestWakeLock();
 
@@ -139,11 +188,12 @@ export default function App() {
       kg: world.peakWeight,
       programName: lastProgramNameRef.current,
     });
-    if (world.score > bestScore) setBestScore(world.score);
+    recordRun(world.score, world.peakWeight);
     setShowResults(false);
     setShowOverlay(true);
     overlayShownAtRef.current = performance.now();
-  }, [bestScore]);
+    lockMenuBriefly();
+  }, [recordRun, lockMenuBriefly]);
 
   // Tapping the play area freezes the run; resuming shifts gameStartTime forward by
   // the paused duration so the wall-clock TIME doesn't jump.
@@ -172,9 +222,9 @@ export default function App() {
       kg: world.peakWeight,
       programName: lastProgramNameRef.current,
     });
-    if (world.score > bestScore) setBestScore(world.score);
+    recordRun(world.score, world.peakWeight);
     setShowResults(true);
-  }, [bestScore]);
+  }, [recordRun]);
 
   const setUp = useCallback((value: boolean) => { worldRef.current.keysUp = value; }, []);
   const setDown = useCallback((value: boolean) => { worldRef.current.keysDown = value; }, []);
@@ -278,15 +328,16 @@ export default function App() {
             setShowResults(false);
             setShowOverlay(true);
             overlayShownAtRef.current = performance.now();
+            lockMenuBriefly();
           }}
         />
       )}
 
       {showOverlay && view === 'menu' && (
         <Overlay
-          best={bestScore}
-          lastScore={lastRun?.score ?? null}
-          lastSeconds={lastRun?.seconds ?? null}
+          bestScore={bestScore}
+          maxKilograms={maxKilograms}
+          locked={menuLocked}
           programs={programsStore.programs}
           selectedId={programsStore.selectedId}
           selectedProgram={programsStore.selectedProgram}

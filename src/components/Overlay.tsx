@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { summarizeProgram, type Program } from '../game/program';
 
 interface Props {
-  best: number;
-  lastScore: number | null;
-  lastSeconds: number | null;
+  bestScore: number;
+  maxKilograms: number;
+  locked: boolean;
   programs: Program[];
   selectedId: string;
   selectedProgram: Program | undefined;
@@ -22,9 +22,9 @@ interface Props {
 
 export function Overlay(props: Props) {
   const {
-    best,
-    lastScore,
-    lastSeconds,
+    bestScore,
+    maxKilograms,
+    locked,
     programs,
     selectedId,
     selectedProgram,
@@ -41,11 +41,10 @@ export function Overlay(props: Props) {
   } = props;
 
   const [connecting, setConnecting] = useState(false);
-  const hasLast = lastScore !== null && lastSeconds !== null;
   const canDelete = selectedProgram !== undefined && !selectedProgram.builtIn;
 
   return (
-    <div className="overlay">
+    <div className={`overlay ${locked ? 'locked' : ''}`}>
       <h1>
         CLIMB
         <br />
@@ -53,11 +52,9 @@ export function Overlay(props: Props) {
       </h1>
       <div className="sub">⛰ kees lampe · tindeq ⛰</div>
 
-      {hasLast && (
-        <div className="last-info">
-          TIME: {formatTime(lastSeconds!)} &nbsp; SCORE: {lastScore}
-        </div>
-      )}
+      <div className="last-info">
+        BEST: {bestScore} &nbsp; MAX: {maxKilograms}kg
+      </div>
 
       <div className="seq-wrap">
         <div className="seq-label">Program</div>
@@ -101,7 +98,6 @@ export function Overlay(props: Props) {
       >
         ▶ SEND IT!
       </button>
-      <div className="best">BEST: {best}</div>
 
       <button
         className={`tindeq-btn ${tindeqConnected ? 'connected' : ''}`}
@@ -118,21 +114,15 @@ export function Overlay(props: Props) {
         {connecting ? '⏳ Connecting…' : tindeqConnected ? '✓ Tindeq Connected' : '🔗 Connect Tindeq'}
       </button>
 
-      <label className="toggle-row">
-        <input type="checkbox" checked={showDebug} onChange={(e) => setShowDebug(e.target.checked)} /> DEBUG OVERLAY
-      </label>
-
       <div className="hint">
         Hold ↑ / ↓ to climb · or use Tindeq
         <br />
         match height to clip the bolt anchors
       </div>
+
+      <label className="toggle-row menu-bottom">
+        <input type="checkbox" checked={showDebug} onChange={(e) => setShowDebug(e.target.checked)} /> DEBUG OVERLAY
+      </label>
     </div>
   );
-}
-
-function formatTime(totalSeconds: number): string {
-  const minutes = Math.floor(totalSeconds / 60);
-  const remainingSeconds = totalSeconds % 60;
-  return `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
 }

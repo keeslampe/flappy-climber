@@ -3,7 +3,7 @@
 // to 3 clip spacings (clips are ANCHOR_SPACING_PIXELS = 90 apart) so ~3 clips are
 // visible at once — a narrower world also means bigger on-screen elements.
 export const WORLD_WIDTH = 270;
-export const GROUND_OFFSET_FROM_BOTTOM = 60;
+export const GROUND_OFFSET_FROM_BOTTOM = 26;
 
 export const MOVE_SPEED = 3.0;
 export const SCROLL_SPEED = 1.5;
@@ -22,8 +22,12 @@ export const HAND_SWITCH_REST_SECONDS = 8;
 // anchors ALL use this single mapping (see waistYForHeight) so a given program
 // height lines up everywhere.
 export const HEIGHT_SCALE_MAX = 50;
-export const HEIGHT_METER_TOP_OFFSET = 38;
-export const HEIGHT_METER_BOTTOM_OFFSET = 12;
+// Top of the climbable range. Sits low enough that the 50 kg mark (the top of the
+// scale) clears the HUD pills and is visible on the ruler.
+export const HEIGHT_METER_TOP_OFFSET = 64;
+// Bottom of the scale: 0 kg lines up with the climber's waist when grounded
+// (rest position groundY - 24, waist anchor + 8 → groundY - 16).
+export const HEIGHT_METER_BOTTOM_OFFSET = 16;
 
 export const WALL_SEED = 5;
 export const WALL_HEADROOM_PIXELS = 28;        // rock always rises this far above an elevated clip

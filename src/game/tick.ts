@@ -49,7 +49,7 @@ export function tickWorld(world: World, opts: TickOpts): void {
     // floor so it keeps moving near the bottom — quick but still controllable.
     if (world.keysDown) world.climber.y += Math.max(MOVE_SPEED, (groundY - world.climber.y) * 0.09);
   }
-  world.climber.y = Math.max(30, Math.min(groundY - 20, world.climber.y));
+  world.climber.y = Math.max(30, Math.min(groundY - 24, world.climber.y));
   world.tindeqMoving =
     world.tindeqConnected && Math.abs(world.climber.y - previousY) > 0.3;
 
