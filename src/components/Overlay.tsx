@@ -1,11 +1,17 @@
 import { useState } from 'react';
+import { summarizeProgram, type Program } from '../game/program';
 
 interface Props {
   best: number;
   lastScore: number | null;
   lastSeconds: number | null;
-  seqText: string;
-  setSeqText: (s: string) => void;
+  programs: Program[];
+  selectedId: string;
+  selectedProgram: Program | undefined;
+  setSelectedId: (id: string) => void;
+  onNewProgram: () => void;
+  onEditProgram: () => void;
+  onDeleteProgram: () => void;
   showDebug: boolean;
   setShowDebug: (v: boolean) => void;
   onStart: () => void;
@@ -19,8 +25,13 @@ export function Overlay(props: Props) {
     best,
     lastScore,
     lastSeconds,
-    seqText,
-    setSeqText,
+    programs,
+    selectedId,
+    selectedProgram,
+    setSelectedId,
+    onNewProgram,
+    onEditProgram,
+    onDeleteProgram,
     showDebug,
     setShowDebug,
     onStart,
@@ -31,6 +42,7 @@ export function Overlay(props: Props) {
 
   const [connecting, setConnecting] = useState(false);
   const hasLast = lastScore !== null && lastSeconds !== null;
+  const canDelete = selectedProgram !== undefined && !selectedProgram.builtIn;
 
   return (
     <div className="overlay">
@@ -48,13 +60,35 @@ export function Overlay(props: Props) {
       )}
 
       <div className="seq-wrap">
-        <div className="seq-label">Program (optional)</div>
-        <textarea
-          className="seq-input"
-          rows={5}
-          value={seqText}
-          onChange={(e) => setSeqText(e.target.value)}
-        />
+        <div className="seq-label">Program</div>
+        <select
+          className="program-select"
+          value={selectedId}
+          onChange={(e) => setSelectedId(e.target.value)}
+        >
+          {programs.map((program) => (
+            <option key={program.id} value={program.id}>
+              {program.name}
+              {program.builtIn ? '' : ' ★'}
+            </option>
+          ))}
+        </select>
+        {selectedProgram && (
+          <div className="program-summary">{summarizeProgram(selectedProgram)}</div>
+        )}
+        <div className="program-buttons">
+          <button className="program-btn" onClick={onNewProgram}>
+            ＋ New
+          </button>
+          <button className="program-btn" onClick={onEditProgram}>
+            ✎ Edit
+          </button>
+          {canDelete && (
+            <button className="program-btn danger" onClick={onDeleteProgram}>
+              🗑 Delete
+            </button>
+          )}
+        </div>
       </div>
 
       <button

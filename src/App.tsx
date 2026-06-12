@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SCROLL_SPEED, WORLD_WIDTH } from './game/constants';
-import { parseSequence } from './game/sequence';
+import { expandProgram, type Program } from './game/program';
 import { tickWorld } from './game/tick';
 import type { SeqEvent } from './game/types';
 import { createInitialWorld, getGroundY, resetForNewGame } from './game/world';
+import { usePrograms } from './hooks/usePrograms';
 
 import { Climber } from './components/Climber';
 import { DebugPanel } from './components/DebugPanel';
@@ -12,6 +13,7 @@ import { Ground } from './components/Ground';
 import { HeadsUpDisplay } from './components/HeadsUpDisplay';
 import { HeightMeter } from './components/HeightMeter';
 import { Overlay } from './components/Overlay';
+import { ProgramEditor } from './components/ProgramEditor';
 import { ResultsScreen } from './components/ResultsScreen';
 import { ProgramTargetLine } from './components/ProgramTargetLine';
 import { BoltAnchors } from './visual/BoltAnchor';
@@ -29,10 +31,6 @@ import { ValleyFloor } from './visual/ValleyFloor';
 import { useGameLoop } from './hooks/useGameLoop';
 import { useKeyboard } from './hooks/useKeyboard';
 import { useTindeq } from './hooks/useTindeq';
-
-const DEFAULT_SEQ = `8 seconds on 20 height
-10 seconds rest
-repeat this 5 times`;
 
 // The simulation advances in fixed real-time steps (60 per second) so motion and
 // the workout timer are independent of the display's refresh rate.
@@ -55,28 +53,30 @@ export default function App() {
   const worldRef = useRef(createInitialWorld(logicalHeight));
   const [, setTick] = useState(0);
   const tindeq = useTindeq();
-  const [seqText, setSeqText] = useState(DEFAULT_SEQ);
+  const programsStore = usePrograms();
   const [showDebug, setShowDebug] = useState(true);
   const [showTargetLine, setShowTargetLine] = useState(true);
   const [showOverlay, setShowOverlay] = useState(true);
   const [showResults, setShowResults] = useState(false);
+  const [editingProgram, setEditingProgram] = useState<Program | null>(null);
+  const [view, setView] = useState<'menu' | 'editor'>('menu');
   const [bestScore, setBestScore] = useState(0);
   const [lastRun, setLastRun] = useState<{ score: number; seconds: number } | null>(null);
 
   const startGame = useCallback(() => {
     const world = worldRef.current;
     resetForNewGame(world, logicalHeight);
-    const parsed = parseSequence(seqText);
-    if (parsed.events.length > 0) {
-      // Always begin with a 5 second rest, then run the repeat-expanded program
-      // once (so the intro rest happens only at the very start, not each repeat).
-      const expanded: SeqEvent[] = [{ type: 'rest', duration: 5 }];
-      for (let repeat = 0; repeat < parsed.repeatTimes; repeat++) expanded.push(...parsed.events);
+    const program = programsStore.selectedProgram;
+    const events = program ? expandProgram(program) : [];
+    if (events.length > 0) {
+      // Always begin with a 5 second rest, then run the program once (block repeats
+      // are already baked in, so the intro rest happens only at the very start).
+      const expanded: SeqEvent[] = [{ type: 'rest', duration: 5 }, ...events];
       world.sequenceProgram = expanded;
       world.sequenceRepeatMax = 1;
     } else {
-      world.sequenceProgram = parsed.events;
-      world.sequenceRepeatMax = parsed.repeatTimes;
+      world.sequenceProgram = [];
+      world.sequenceRepeatMax = 1;
     }
     // Finish line 2 seconds after the last pull ends (no pull → no finish line).
     let cursor = 0;
@@ -89,7 +89,7 @@ export default function App() {
     world.status = 'playing';
     setShowResults(false);
     setShowOverlay(false);
-  }, [logicalHeight, seqText]);
+  }, [logicalHeight, programsStore.selectedProgram]);
 
   const returnToMenu = useCallback(() => {
     const world = worldRef.current;
@@ -194,19 +194,42 @@ export default function App() {
         />
       )}
 
-      {showOverlay && (
+      {showOverlay && view === 'menu' && (
         <Overlay
           best={bestScore}
           lastScore={lastRun?.score ?? null}
           lastSeconds={lastRun?.seconds ?? null}
-          seqText={seqText}
-          setSeqText={setSeqText}
+          programs={programsStore.programs}
+          selectedId={programsStore.selectedId}
+          selectedProgram={programsStore.selectedProgram}
+          setSelectedId={programsStore.setSelectedId}
+          onNewProgram={() => {
+            setEditingProgram(null);
+            setView('editor');
+          }}
+          onEditProgram={() => {
+            setEditingProgram(programsStore.selectedProgram ?? null);
+            setView('editor');
+          }}
+          onDeleteProgram={() => programsStore.deleteProgram(programsStore.selectedId)}
           showDebug={showDebug}
           setShowDebug={setShowDebug}
           onStart={startGame}
           onConnectTindeq={tindeq.connect}
           tindeqConnected={tindeq.connected}
           bluetoothAvailable={tindeq.bluetoothAvailable}
+        />
+      )}
+
+      {showOverlay && view === 'editor' && (
+        <ProgramEditor
+          initial={editingProgram}
+          onSave={(program) => {
+            programsStore.saveProgram(program);
+            programsStore.setSelectedId(program.id);
+            setView('menu');
+          }}
+          onCancel={() => setView('menu')}
         />
       )}
     </div>
