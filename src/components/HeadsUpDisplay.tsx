@@ -1,10 +1,13 @@
+import type { Hand } from '../game/types';
+
 interface Props {
   seconds: number;
   score: number;
   weight: number;
+  hand: Hand | null;
 }
 
-export function HeadsUpDisplay({ seconds, score, weight }: Props) {
+export function HeadsUpDisplay({ seconds, score, weight, hand }: Props) {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   const timeStr = `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
@@ -22,6 +25,13 @@ export function HeadsUpDisplay({ seconds, score, weight }: Props) {
         <div className="hud-label">KG</div>
         <div className="hud-value">{weight}kg</div>
       </div>
+      {hand && (
+        // key={hand} remounts the box on a switch so the flash animation replays.
+        <div className={`hud-box hand ${hand}`} key={hand}>
+          <div className="hud-label">HAND</div>
+          <div className="hud-value">{hand === 'left' ? 'L' : 'R'}</div>
+        </div>
+      )}
     </div>
   );
 }

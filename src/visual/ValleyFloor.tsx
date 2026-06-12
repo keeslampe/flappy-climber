@@ -3,31 +3,60 @@ import { PALETTE } from '../game/constants';
 interface Props {
   worldWidth: number;
   groundY: number;
+  backgroundScrollY: number;
 }
 
-// Green valley floor visible far below the climbing wall. A wobbly-topped band
-// at the bottom of the sky, with a foot-of-wall haze gradient above it.
-export function ValleyFloor({ worldWidth, groundY }: Props) {
-  // Place the floor top at 86% of groundY so it's visible below the wall.
-  const floorTopPercent = 0.86;
-  const floorY = groundY * floorTopPercent;
-  const hazeTopY = floorY - groundY * 0.12;
+function lcgRandom(seed: number): () => number {
+  let state = (seed >>> 0) || 1;
+  return () => {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
+  };
+}
 
-  // Wobbly top edge
-  const wobblePoints: Array<[number, number]> = [
-    [0, floorY + groundY * 0.015],
-    [worldWidth * 0.14, floorY - groundY * 0.012],
-    [worldWidth * 0.28, floorY + groundY * 0.010],
-    [worldWidth * 0.42, floorY - groundY * 0.016],
-    [worldWidth * 0.56, floorY + groundY * 0.006],
-    [worldWidth * 0.70, floorY - groundY * 0.014],
-    [worldWidth * 0.84, floorY + groundY * 0.012],
-    [worldWidth, floorY - groundY * 0.006],
-  ];
-  const topEdgePath =
-    wobblePoints.map(([x, y], index) => `${index === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
-  const floorFillPath = `${topEdgePath} L ${worldWidth} ${groundY} L 0 ${groundY} Z`;
-  const floorRimPoints = wobblePoints.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ');
+// Smooth quadratic curve through points (interior points are control points, the
+// midpoints are on-curve anchors) — gives soft rolling hills, not zig-zag lines.
+function smoothTopPath(points: Array<[number, number]>): string {
+  let data = `M ${points[0][0].toFixed(1)} ${points[0][1].toFixed(1)}`;
+  for (let index = 1; index < points.length - 1; index++) {
+    const [controlX, controlY] = points[index];
+    const [nextX, nextY] = points[index + 1];
+    const midX = (controlX + nextX) / 2;
+    const midY = (controlY + nextY) / 2;
+    data += ` Q ${controlX.toFixed(1)} ${controlY.toFixed(1)} ${midX.toFixed(1)} ${midY.toFixed(1)}`;
+  }
+  const last = points[points.length - 1];
+  data += ` L ${last[0].toFixed(1)} ${last[1].toFixed(1)}`;
+  return data;
+}
+
+// Green rolling hills far below the climbing wall. Smooth, periodic crest (so the
+// tiled copies join with no vertical jump) that scrolls with a slow parallax.
+export function ValleyFloor({ worldWidth, groundY, backgroundScrollY }: Props) {
+  const baseY = groundY * 0.85;
+  const amplitude = groundY * 0.045;
+  const hillCount = 5;
+  const segment = worldWidth / hillCount;
+
+  const random = lcgRandom(99);
+  const startY = baseY - amplitude * (0.4 + 0.3 * random());
+  const points: Array<[number, number]> = [[0, startY]];
+  for (let index = 1; index <= hillCount; index++) {
+    const crestX = (index - 0.5) * segment + (random() - 0.5) * segment * 0.2;
+    const crestY = baseY - amplitude * (0.7 + 0.3 * random());
+    const dipX = index * segment;
+    const dipY = baseY + amplitude * (0.1 + 0.2 * random());
+    points.push([+crestX.toFixed(1), +crestY.toFixed(1)]);
+    points.push([+dipX.toFixed(1), +dipY.toFixed(1)]);
+  }
+  // Seamless wrap: the final anchor matches the start height.
+  points[points.length - 1] = [worldWidth, startY];
+
+  const topPath = smoothTopPath(points);
+  const fillPath = `${topPath} L ${worldWidth} ${groundY} L 0 ${groundY} Z`;
+
+  const hazeTopY = baseY - amplitude - groundY * 0.12;
+  const offset = (((backgroundScrollY * 0.16) % worldWidth) + worldWidth) % worldWidth;
 
   return (
     <>
@@ -42,27 +71,23 @@ export function ValleyFloor({ worldWidth, groundY }: Props) {
         </linearGradient>
       </defs>
 
-      {/* Haze fading the foot of the wall into the valley */}
-      <rect
-        x={0}
-        y={hazeTopY}
-        width={worldWidth}
-        height={floorY - hazeTopY + 4}
-        fill="url(#valleyHazeGradient)"
-      />
+      {/* Haze fading the foot of the wall into the valley (static, full width) */}
+      <rect x={0} y={hazeTopY} width={worldWidth} height={baseY - hazeTopY + 4} fill="url(#valleyHazeGradient)" />
 
-      {/* Valley floor body */}
-      <path d={floorFillPath} fill="url(#valleyFloorGradient)" />
-
-      {/* Wobbly rim line on the ground edge */}
-      <polyline
-        points={floorRimPoints}
-        fill="none"
-        stroke={PALETTE.ink}
-        strokeWidth="2.6"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
+      {/* Rolling hill body + rim, tiled and scrolling with a slow parallax */}
+      {[-1, 0, 1].map((tile) => (
+        <g key={tile} transform={`translate(${tile * worldWidth - offset} 0)`}>
+          <path d={fillPath} fill="url(#valleyFloorGradient)" />
+          <path
+            d={topPath}
+            fill="none"
+            stroke={PALETTE.ink}
+            strokeWidth="2.4"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        </g>
+      ))}
     </>
   );
 }

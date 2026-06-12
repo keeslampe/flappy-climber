@@ -9,6 +9,11 @@ export const ANCHOR_SPAWN_INTERVAL = 60; // fixed steps between anchor spawns (6
 export const ANCHOR_SPACING_PIXELS = ANCHOR_SPAWN_INTERVAL * SCROLL_SPEED; // scroll distance between clips
 export const ANCHOR_CLIP_HEIGHT_TOLERANCE = 14;
 export const ANCHOR_CLIP_X_TOLERANCE = 10;
+// Hand switching. The switch cue ("scream" bubble) fires this many seconds into the
+// rest that precedes a hand change; HAND_SWITCH_REST_SECONDS is the fallback rest
+// inserted when a switch boundary has no rest of its own (a block with restSeconds 0).
+export const HAND_SWITCH_CUE_DELAY_SECONDS = 2;
+export const HAND_SWITCH_REST_SECONDS = 8;
 // Height/force meter geometry. The climber's waist spans heights 0..HEIGHT_SCALE_MAX
 // between HEIGHT_METER_TOP_OFFSET (px from the world top) and groundY - HEIGHT_METER_BOTTOM_OFFSET.
 // The ruler, the target marker, the force-driven climber position, and the bolt

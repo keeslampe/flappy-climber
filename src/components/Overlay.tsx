@@ -47,7 +47,7 @@ export function Overlay(props: Props) {
   return (
     <div className="overlay">
       <h1>
-        CLIMBER
+        CLIMB
         <br />
         RUNNER
       </h1>

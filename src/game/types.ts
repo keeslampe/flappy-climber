@@ -50,9 +50,12 @@ export interface Cloud {
   speed: number;
 }
 
+export type Hand = 'left' | 'right';
+
 export type SeqEvent =
-  | { type: 'rest'; duration: number }
-  | { type: 'on'; duration: number; height: number };
+  // switchTo on a rest = "2 seconds into this rest, switch the active hand to this value".
+  | { type: 'rest'; duration: number; switchTo?: Hand }
+  | { type: 'on'; duration: number; height: number; hand?: Hand };
 
 export interface World {
   status: GameState;
@@ -89,8 +92,20 @@ export interface World {
   sequenceTargetHeight: number;
   beamDisplayHeight: number;
 
+  // Hand switching. currentHand is the hand the climber should be pulling with right
+  // now (shown in the HUD pill + on the sprite); null when the program has no hand
+  // switching. handSwitchCue drives the transient "scream" bubble and fades out.
+  currentHand: Hand | null;
+  handSwitchCue: { hand: Hand; life: number } | null;
+
+  // Scroll offset (px) where the last pull ends. Clips stop spawning past this so the
+  // final rest before the flag is empty. 0 = no program / no pull.
+  lastPullScroll: number;
+  // Peak climber weight (kg) reached during the run — shown on the results overview.
+  peakWeight: number;
+
   // Finish line: scroll offset (px) at which the finish flag reaches the climber —
-  // 2 seconds after the last pull. 0 = no finish (e.g. no program). Once the flag
+  // a few seconds after the last pull. 0 = no finish (e.g. no program). Once the flag
   // passes the climber, finishReached flips and the run ends.
   finishScroll: number;
   finishSpawned: boolean;

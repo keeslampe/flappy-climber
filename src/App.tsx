@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { SCROLL_SPEED, WORLD_WIDTH } from './game/constants';
-import { expandProgram, type Program } from './game/program';
+import { expandProgramWithHands, type Program } from './game/program';
 import { tickWorld } from './game/tick';
 import type { SeqEvent } from './game/types';
 import { createInitialWorld, getGroundY, resetForNewGame } from './game/world';
@@ -13,11 +13,13 @@ import { Ground } from './components/Ground';
 import { HeadsUpDisplay } from './components/HeadsUpDisplay';
 import { HeightMeter } from './components/HeightMeter';
 import { Overlay } from './components/Overlay';
+import { PauseScreen } from './components/PauseScreen';
 import { ProgramEditor } from './components/ProgramEditor';
 import { ResultsScreen } from './components/ResultsScreen';
 import { ProgramTargetLine } from './components/ProgramTargetLine';
 import { BoltAnchors } from './visual/BoltAnchor';
 import { ClimbingWall } from './visual/ClimbingWall';
+import { HandSwitchBubble } from './visual/HandSwitchBubble';
 import { Clouds } from './visual/Clouds';
 import { HorizonHaze } from './visual/HorizonHaze';
 import { Mountains } from './visual/Mountains';
@@ -55,19 +57,27 @@ export default function App() {
   const tindeq = useTindeq();
   const programsStore = usePrograms();
   const [showDebug, setShowDebug] = useState(true);
-  const [showTargetLine, setShowTargetLine] = useState(true);
+  const [showTargetLine, setShowTargetLine] = useState(false);
   const [showOverlay, setShowOverlay] = useState(true);
   const [showResults, setShowResults] = useState(false);
   const [editingProgram, setEditingProgram] = useState<Program | null>(null);
   const [view, setView] = useState<'menu' | 'editor'>('menu');
+  const [paused, setPaused] = useState(false);
+  const pauseStartRef = useRef(0);
   const [bestScore, setBestScore] = useState(0);
-  const [lastRun, setLastRun] = useState<{ score: number; seconds: number } | null>(null);
+  const [lastRun, setLastRun] = useState<
+    { score: number; seconds: number; kg: number; programName: string } | null
+  >(null);
+  // The program name in play, captured at start so the results overview is stable.
+  const lastProgramNameRef = useRef('');
 
   const startGame = useCallback(() => {
     const world = worldRef.current;
     resetForNewGame(world, logicalHeight);
     const program = programsStore.selectedProgram;
-    const events = program ? expandProgram(program) : [];
+    const { events, initialHand } = program
+      ? expandProgramWithHands(program)
+      : { events: [] as SeqEvent[], initialHand: null };
     if (events.length > 0) {
       // Always begin with a 5 second rest, then run the program once (block repeats
       // are already baked in, so the intro rest happens only at the very start).
@@ -78,14 +88,20 @@ export default function App() {
       world.sequenceProgram = [];
       world.sequenceRepeatMax = 1;
     }
-    // Finish line 2 seconds after the last pull ends (no pull → no finish line).
+    world.currentHand = initialHand;
+    world.handSwitchCue = null;
+    lastProgramNameRef.current = program?.name ?? '';
+    setPaused(false);
+    // Clips stop at the last pull; the finish flag follows 4 seconds later, leaving
+    // an empty rest at the end (no pull → no finish line).
     let cursor = 0;
     let lastPullEnd = 0;
     for (const event of world.sequenceProgram) {
       cursor += event.duration * 60 * SCROLL_SPEED;
       if (event.type === 'on') lastPullEnd = cursor;
     }
-    world.finishScroll = lastPullEnd > 0 ? lastPullEnd + 2 * 60 * SCROLL_SPEED : 0;
+    world.lastPullScroll = lastPullEnd;
+    world.finishScroll = lastPullEnd > 0 ? lastPullEnd + 4 * 60 * SCROLL_SPEED : 0;
     world.status = 'playing';
     setShowResults(false);
     setShowOverlay(false);
@@ -95,11 +111,30 @@ export default function App() {
     const world = worldRef.current;
     if (world.status !== 'playing') return;
     world.status = 'idle';
-    setLastRun({ score: world.score, seconds: world.seconds });
+    setPaused(false);
+    setLastRun({
+      score: world.score,
+      seconds: world.seconds,
+      kg: world.peakWeight,
+      programName: lastProgramNameRef.current,
+    });
     if (world.score > bestScore) setBestScore(world.score);
     setShowResults(false);
     setShowOverlay(true);
   }, [bestScore]);
+
+  // Tapping the play area freezes the run; resuming shifts gameStartTime forward by
+  // the paused duration so the wall-clock TIME doesn't jump.
+  const pauseGame = useCallback(() => {
+    if (worldRef.current.status !== 'playing') return;
+    pauseStartRef.current = performance.now();
+    setPaused(true);
+  }, []);
+
+  const resumeGame = useCallback(() => {
+    worldRef.current.gameStartTime += performance.now() - pauseStartRef.current;
+    setPaused(false);
+  }, []);
 
   // Reaching the finish flag ends the run and shows the results overview.
   const finishRun = useCallback(() => {
@@ -107,7 +142,12 @@ export default function App() {
     if (world.status !== 'playing') return;
     world.status = 'idle';
     world.finishReached = false;
-    setLastRun({ score: world.score, seconds: world.seconds });
+    setLastRun({
+      score: world.score,
+      seconds: world.seconds,
+      kg: world.peakWeight,
+      programName: lastProgramNameRef.current,
+    });
     if (world.score > bestScore) setBestScore(world.score);
     setShowResults(true);
   }, [bestScore]);
@@ -125,6 +165,13 @@ export default function App() {
     const world = worldRef.current;
     world.tindeqConnected = tindeq.connected;
     world.tindeqKilograms = tindeq.readingRef.current;
+
+    // While paused, freeze the simulation entirely — drop any accumulated backlog so
+    // resuming doesn't fast-forward, and skip the redraw (nothing has moved).
+    if (paused) {
+      stepAccumulatorRef.current = 0;
+      return;
+    }
 
     // Fixed-timestep: advance the simulation in real 1/60s steps so the game and
     // the workout timer run at real seconds regardless of the display refresh rate.
@@ -152,7 +199,7 @@ export default function App() {
         <Clouds clouds={world.clouds} />
         <Mountains worldWidth={WORLD_WIDTH} groundY={groundY} backgroundScrollY={world.backgroundScrollY} />
         <HorizonHaze worldWidth={WORLD_WIDTH} groundY={groundY} />
-        <ValleyFloor worldWidth={WORLD_WIDTH} groundY={groundY} />
+        <ValleyFloor worldWidth={WORLD_WIDTH} groundY={groundY} backgroundScrollY={world.backgroundScrollY} />
         <ClimbingWall world={world} worldWidth={WORLD_WIDTH} groundY={groundY} />
         <Ground worldWidth={WORLD_WIDTH} groundY={groundY} viewportHeight={logicalHeight} groundOffset={world.groundOffset} />
         <BoltAnchors world={world} groundY={groundY} />
@@ -160,33 +207,42 @@ export default function App() {
         <Rope world={world} />
         <Particles world={world} />
         <ScorePops world={world} />
+        <HandSwitchBubble world={world} />
         <HeightMeter world={world} groundY={groundY} />
         {showDebug && showTargetLine && <ProgramTargetLine world={world} groundY={groundY} />}
       </svg>
 
-      <HeadsUpDisplay seconds={world.seconds} score={world.score} weight={world.weight} />
+      <HeadsUpDisplay seconds={world.seconds} score={world.score} weight={world.weight} hand={world.currentHand} />
 
       {showDebug && (
         <DebugPanel
           raw={tindeq.readingRef.current}
           smooth={world.tindeqSmoothedKilograms}
           connected={tindeq.connected}
+          handMode={programsStore.selectedProgram?.handMode ?? 'none'}
+          currentHand={world.currentHand}
           showTargetLine={showTargetLine}
           setShowTargetLine={setShowTargetLine}
         />
       )}
 
-      <DirectionalPad
-        onUpChange={(value) => { worldRef.current.keysUp = value; }}
-        onDownChange={(value) => { worldRef.current.keysDown = value; }}
-        onMenu={returnToMenu}
-      />
+      {/* Transparent layer over the play area: a tap here pauses the run. Sits below
+          the HUD and menu button (so those still work) and above the world SVG. */}
+      {world.status === 'playing' && !paused && (
+        <div className="pause-catcher" onClick={pauseGame} />
+      )}
+
+      <DirectionalPad onMenu={returnToMenu} />
+
+      {paused && <PauseScreen onResume={resumeGame} onMenu={returnToMenu} />}
 
       {showResults && lastRun && (
         <ResultsScreen
           score={lastRun.score}
           seconds={lastRun.seconds}
+          kg={lastRun.kg}
           best={bestScore}
+          programName={lastRun.programName}
           onClose={() => {
             setShowResults(false);
             setShowOverlay(true);

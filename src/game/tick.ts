@@ -2,6 +2,7 @@ import {
   ANCHOR_CLIP_HEIGHT_TOLERANCE,
   ANCHOR_CLIP_X_TOLERANCE,
   ANCHOR_SPAWN_INTERVAL,
+  HAND_SWITCH_CUE_DELAY_SECONDS,
   HEIGHT_SCALE_MAX,
   MOVE_SPEED,
   ROPE_MAX_SAMPLES,
@@ -33,7 +34,9 @@ export function tickWorld(world: World, opts: TickOpts): void {
     world.climber.y = waistYForHeight(world.tindeqSmoothedKilograms, groundY) - 8;
   } else {
     if (world.keysUp) world.climber.y -= MOVE_SPEED;
-    if (world.keysDown) world.climber.y += MOVE_SPEED;
+    // Bailing out drops faster than climbing up (eased toward the ground), with a
+    // floor so it keeps moving near the bottom — quick but still controllable.
+    if (world.keysDown) world.climber.y += Math.max(MOVE_SPEED, (groundY - world.climber.y) * 0.09);
   }
   world.climber.y = Math.max(30, Math.min(groundY - 20, world.climber.y));
   world.tindeqMoving =
@@ -75,6 +78,7 @@ export function tickWorld(world: World, opts: TickOpts): void {
     0,
     Math.min(HEIGHT_SCALE_MAX, Math.round(heightForWaistY(world.climber.y + 8, groundY))),
   );
+  if (world.weight > world.peakWeight) world.peakWeight = world.weight;
 
   // Animation timer advances when moving (faster) or on the ground (slower)
   const moving = world.keysUp || world.keysDown || world.tindeqMoving;
@@ -151,13 +155,16 @@ export function tickWorld(world: World, opts: TickOpts): void {
       if (Math.abs(climberWaistY - anchor.waistY) <= ANCHOR_CLIP_HEIGHT_TOLERANCE) {
         anchor.state = 'hit';
         world.score++;
-        world.scorePops.push({
-          x: world.climber.x + 18,
-          y: climberWaistY - 28,
-          life: 1,
-          velocityY: -1,
-          text: 'CLIP!',
-        });
+        // No "CLIP!" pop for rest/ground clips (target height 0) — only real pulls.
+        if (anchor.heightMeters > 0) {
+          world.scorePops.push({
+            x: world.climber.x + 18,
+            y: climberWaistY - 28,
+            life: 1,
+            velocityY: -1,
+            text: 'CLIP!',
+          });
+        }
       }
     }
   }
@@ -193,12 +200,35 @@ export function tickWorld(world: World, opts: TickOpts): void {
     scorePop.life -= 0.024;
   }
   world.scorePops = world.scorePops.filter((scorePop) => scorePop.life > 0);
+
+  // Hand-switch scream bubble fades out (~1.4s).
+  if (world.handSwitchCue) {
+    world.handSwitchCue.life -= 0.012;
+    if (world.handSwitchCue.life <= 0) world.handSwitchCue = null;
+  }
 }
 
 function tickSequence(world: World, viewportHeight: number): void {
   const currentEvent = world.sequenceProgram[world.sequenceIndex];
   world.sequenceTargetHeight = currentEvent && currentEvent.type === 'on' ? currentEvent.height : 0;
   world.beamDisplayHeight += (world.sequenceTargetHeight - world.beamDisplayHeight) * 0.04;
+
+  // Fire the hand-switch cue a fixed delay into the rest that precedes a hand change.
+  // The elapsed time is read off the scroll clock (same one events advance on). The
+  // currentHand !== switchTo comparison makes this idempotent — it fires exactly once.
+  if (currentEvent && currentEvent.type === 'rest' && currentEvent.switchTo) {
+    const elapsedPixels = world.backgroundScrollY - world.sequenceEventStartScroll;
+    const cueThresholdPixels = HAND_SWITCH_CUE_DELAY_SECONDS * 60 * SCROLL_SPEED;
+    if (elapsedPixels >= cueThresholdPixels && world.currentHand !== currentEvent.switchTo) {
+      world.currentHand = currentEvent.switchTo;
+      world.handSwitchCue = { hand: currentEvent.switchTo, life: 1 };
+    }
+  }
+  // Safety net: if a pull starts on a hand the indicator hasn't caught up to (a rest
+  // shorter than the cue delay never fired), correct it now — silently, no bubble.
+  if (currentEvent && currentEvent.type === 'on' && currentEvent.hand && world.currentHand !== currentEvent.hand) {
+    world.currentHand = currentEvent.hand;
+  }
 
   if (world.sequenceProgram.length === 0) {
     if (world.frameNumber % ANCHOR_SPAWN_INTERVAL === 0) {
@@ -208,8 +238,14 @@ function tickSequence(world: World, viewportHeight: number): void {
   }
   if (!currentEvent) return;
 
+  // Spawn clips, but stop once a freshly-spawned clip would reach the climber at or
+  // after the last pull ends — that keeps the final rest before the flag empty.
   if (world.frameNumber % ANCHOR_SPAWN_INTERVAL === 0) {
-    world.anchors.push(spawnAnchor(world, viewportHeight));
+    const pixelsAhead = WORLD_WIDTH + 30 - world.climber.x;
+    const arrivalScroll = world.backgroundScrollY + pixelsAhead;
+    if (world.lastPullScroll === 0 || arrivalScroll < world.lastPullScroll) {
+      world.anchors.push(spawnAnchor(world, viewportHeight));
+    }
   }
 
   // Advance events on the continuous scroll clock so the wall stays in lockstep

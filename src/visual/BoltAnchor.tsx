@@ -168,13 +168,6 @@ export function BoltAnchorSvg({ anchor }: { anchor: Anchor }) {
 
   return (
     <g transform={`translate(${translateX} ${translateY}) scale(${scaleValue})`}>
-      {anchor.state === 'next' && (
-        <g className="anchor-pulse" style={{ transformOrigin: '40px 64px' }}>
-          <circle cx="40" cy="64" r="40" fill="none" stroke={PALETTE.yellow} strokeWidth="3.5" strokeDasharray="5 9" strokeLinecap="round" opacity="0.95" />
-          <circle cx="40" cy="64" r="40" fill={PALETTE.yellow} opacity="0.10" />
-        </g>
-      )}
-
       <g>
         <g stroke={PALETTE.ink} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round">
           <path d="M28 12 Q40 6 52 12 Q56 22 48 30 L32 30 Q24 22 28 12 Z" fill="#B9C0C8" />

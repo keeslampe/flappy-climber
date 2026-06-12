@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { HEIGHT_SCALE_MAX } from '../game/constants';
-import type { Program, ProgramBlock } from '../game/program';
+import type { HandMode, Program, ProgramBlock } from '../game/program';
 
 interface Props {
   // The program to edit, or null to create a new one.
@@ -20,18 +20,29 @@ function newId(): string {
 // shipped defaults are never mutated.
 function seedProgram(initial: Program | null): Program {
   if (!initial) {
-    return { id: newId(), name: '', builtIn: false, blocks: [{ ...BLANK_BLOCK }] };
+    return { id: newId(), name: '', builtIn: false, handMode: 'none', blocks: [{ ...BLANK_BLOCK }] };
   }
   if (initial.builtIn) {
     return {
       id: newId(),
       name: `${initial.name} copy`,
       builtIn: false,
+      handMode: initial.handMode ?? 'none',
       blocks: initial.blocks.map((block) => ({ ...block })),
     };
   }
-  return { ...initial, blocks: initial.blocks.map((block) => ({ ...block })) };
+  return {
+    ...initial,
+    handMode: initial.handMode ?? 'none',
+    blocks: initial.blocks.map((block) => ({ ...block })),
+  };
 }
+
+const HAND_MODE_OPTIONS: { value: HandMode; label: string }[] = [
+  { value: 'none', label: 'No hand switch' },
+  { value: 'alternate', label: 'Alternate each rep' },
+  { value: 'both', label: 'Both hands (run twice)' },
+];
 
 export function ProgramEditor({ initial, onSave, onCancel }: Props) {
   const [draft, setDraft] = useState<Program>(() => seedProgram(initial));
@@ -76,6 +87,23 @@ export function ProgramEditor({ initial, onSave, onCancel }: Props) {
             placeholder="My program"
             onChange={(event) => setDraft((previous) => ({ ...previous, name: event.target.value }))}
           />
+        </label>
+
+        <label className="editor-field">
+          <span className="editor-field-label">Hand mode</span>
+          <select
+            className="program-select"
+            value={draft.handMode}
+            onChange={(event) =>
+              setDraft((previous) => ({ ...previous, handMode: event.target.value as HandMode }))
+            }
+          >
+            {HAND_MODE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
         </label>
 
         <div className="block-header">

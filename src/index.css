@@ -58,6 +58,18 @@ html, body, #root {
 .hud-box.score .hud-label { color: #1FD5C8; }
 .hud-box.kg .hud-label    { color: #FF3D8A; }
 .hud-value { font-size: 22px; color: #FFF6E5; font-weight: 800; letter-spacing: 1px; margin-top: 2px; line-height: 1; }
+.hud-box.hand { animation: hand-flash 0.5s ease-out; }
+.hud-box.hand.left  { border-color: #1FD5C8; box-shadow: 4px 4px 0 rgba(0,0,0,0.4), 0 0 0 2px #1FD5C8 inset; }
+.hud-box.hand.left  .hud-label { color: #1FD5C8; }
+.hud-box.hand.right { border-color: #FF3D8A; box-shadow: 4px 4px 0 rgba(0,0,0,0.4), 0 0 0 2px #FF3D8A inset; }
+.hud-box.hand.right .hud-label { color: #FF3D8A; }
+@keyframes hand-flash {
+  0%   { transform: scale(1.35); filter: brightness(2.2); }
+  100% { transform: scale(1);    filter: brightness(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hud-box.hand { animation: none; }
+}
 
 /* Overlay (menu / game-over) */
 .overlay {
@@ -101,10 +113,20 @@ html, body, #root {
 }
 .start-btn:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #1A1A1A; }
 .best { font-size: 12px; color: #FFD23F; letter-spacing: 2px; margin-top: 6px; font-weight: 700; }
+
+/* Results overview — HUD-style pills (reuse .hud-box) laid out in a row */
+.result-pills {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin: 10px 0 16px;
+}
+.result-back { margin-top: 22px; padding: 16px 40px; }
 .last-info { font-size: 17px; color: #FFF6E5; margin-bottom: 8px; letter-spacing: 1px; font-weight: 700; }
 .hint { font-size: 11px; color: #999; margin-top: 18px; text-align: center; line-height: 2; letter-spacing: 1px; }
 
-.seq-wrap { width: 100%; max-width: 320px; margin-bottom: 16px; pointer-events: all; }
+.seq-wrap { width: 100%; max-width: 320px; margin-top: 20px; margin-bottom: 28px; pointer-events: all; }
 .seq-label { font-size: 10px; color: #1FD5C8; letter-spacing: 2px; text-transform: uppercase; text-align: center; margin-bottom: 6px; font-weight: 700; }
 .seq-input {
   width: 100%;
@@ -275,6 +297,14 @@ html, body, #root {
   letter-spacing: 2px;
   border-radius: 8px;
   cursor: pointer;
+  pointer-events: all;
+}
+
+/* Tap-to-pause catcher — covers the play area, below HUD (z5) and d-pad (z6). */
+.pause-catcher {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
   pointer-events: all;
 }
 

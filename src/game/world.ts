@@ -73,6 +73,12 @@ export function createInitialWorld(viewportHeight: number): World {
     sequenceTargetHeight: 0,
     beamDisplayHeight: 0,
 
+    currentHand: null,
+    handSwitchCue: null,
+
+    lastPullScroll: 0,
+    peakWeight: 0,
+
     finishScroll: 0,
     finishSpawned: false,
     finishReached: false,
@@ -111,6 +117,10 @@ export function resetForNewGame(world: World, viewportHeight: number): void {
   world.sequenceEventSpawned = false;
   world.sequenceTargetHeight = 0;
   world.beamDisplayHeight = 0;
+  world.currentHand = null;
+  world.handSwitchCue = null;
+  world.lastPullScroll = 0;
+  world.peakWeight = 0;
   world.finishScroll = 0;
   world.finishSpawned = false;
   world.finishReached = false;
