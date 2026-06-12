@@ -1,6 +1,6 @@
 // Logical world dimensions and physics constants.
 // The world renders into a fixed-width SVG that scales to the viewport.
-export const WORLD_WIDTH = 420;
+export const WORLD_WIDTH = 360;
 export const GROUND_OFFSET_FROM_BOTTOM = 60;
 
 export const MOVE_SPEED = 3.0;

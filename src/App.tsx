@@ -64,6 +64,9 @@ export default function App() {
   const [view, setView] = useState<'menu' | 'editor'>('menu');
   const [paused, setPaused] = useState(false);
   const pauseStartRef = useRef(0);
+  // Timestamp of the last resume — a short window where taps can't re-pause, so the
+  // very tap that resumes (or a stray follow-up touch) doesn't immediately pause again.
+  const resumeAtRef = useRef(0);
   const [bestScore, setBestScore] = useState(0);
   const [lastRun, setLastRun] = useState<
     { score: number; seconds: number; kg: number; programName: string } | null
@@ -109,6 +112,8 @@ export default function App() {
     world.lastPullScroll = lastPullEnd;
     world.finishScroll = lastPullEnd > 0 ? lastPullEnd + 4 * 60 * SCROLL_SPEED : 0;
     world.status = 'playing';
+    // Block the pause-catcher briefly so the same SEND IT tap can't immediately pause.
+    resumeAtRef.current = performance.now();
     setShowResults(false);
     setShowOverlay(false);
   }, [logicalHeight, programsStore.selectedProgram]);
@@ -133,12 +138,14 @@ export default function App() {
   // the paused duration so the wall-clock TIME doesn't jump.
   const pauseGame = useCallback(() => {
     if (worldRef.current.status !== 'playing') return;
+    if (performance.now() - resumeAtRef.current < 500) return; // just resumed — ignore
     pauseStartRef.current = performance.now();
     setPaused(true);
   }, []);
 
   const resumeGame = useCallback(() => {
     worldRef.current.gameStartTime += performance.now() - pauseStartRef.current;
+    resumeAtRef.current = performance.now();
     setPaused(false);
   }, []);
 
