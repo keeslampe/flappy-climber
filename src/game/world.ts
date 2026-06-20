@@ -46,6 +46,7 @@ export function createInitialWorld(viewportHeight: number): World {
   return {
     status: 'idle',
     clipScore: 0,
+    totalClips: 0,
     best: 0,
     seconds: 0,
     gameStartTime: 0,
@@ -110,6 +111,7 @@ export function resetForNewGame(world: World, viewportHeight: number): void {
   world.particles.length = 0;
   world.scorePops.length = 0;
   world.clipScore = 0;
+  world.totalClips = 0;
   world.seconds = 0;
   world.gameStartTime = performance.now();
   world.weight = 0;

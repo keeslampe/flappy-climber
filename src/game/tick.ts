@@ -251,6 +251,7 @@ function tickSequence(world: World, viewportHeight: number): void {
   if (world.sequenceProgram.length === 0) {
     if (world.frameNumber % ANCHOR_SPAWN_INTERVAL === 0) {
       world.anchors.push(spawnAnchor(world, viewportHeight));
+      world.totalClips++;
     }
     return;
   }
@@ -263,6 +264,7 @@ function tickSequence(world: World, viewportHeight: number): void {
     const arrivalScroll = world.backgroundScrollY + pixelsAhead;
     if (world.lastPullScroll === 0 || arrivalScroll < world.lastPullScroll) {
       world.anchors.push(spawnAnchor(world, viewportHeight));
+      world.totalClips++;
     }
   }
 
@@ -288,6 +290,7 @@ function tickSequence(world: World, viewportHeight: number): void {
         label: null,
         isFinish: false,
       });
+      world.totalClips++;
     }
   }
 

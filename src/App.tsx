@@ -108,6 +108,7 @@ export default function App() {
   const [lastRun, setLastRun] = useState<
     {
       score: number;
+      totalClips: number;
       seconds: number;
       kg: number;
       programName: string;
@@ -204,6 +205,7 @@ export default function App() {
     setPaused(false);
     setLastRun({
       score: world.clipScore,
+      totalClips: world.totalClips,
       seconds: world.seconds,
       kg: world.peakWeight,
       programName: lastProgramNameRef.current,
@@ -244,6 +246,7 @@ export default function App() {
     world.finishReached = false;
     setLastRun({
       score: world.clipScore,
+      totalClips: world.totalClips,
       seconds: world.seconds,
       kg: world.peakWeight,
       programName: lastProgramNameRef.current,
@@ -360,6 +363,7 @@ export default function App() {
       {showResults && lastRun && (
         <ResultsScreen
           score={lastRun.score}
+          totalClips={lastRun.totalClips}
           seconds={lastRun.seconds}
           kg={lastRun.kg}
           programName={lastRun.programName}

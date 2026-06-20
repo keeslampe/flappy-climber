@@ -1,5 +1,6 @@
 interface Props {
   score: number;
+  totalClips: number;
   seconds: number;
   kg: number;
   programName: string;
@@ -17,6 +18,7 @@ interface Props {
 // echoing the in-game HUD pills (REPS / SETS / TIME / CLIPS / MAX KG).
 export function ResultsScreen({
   score,
+  totalClips,
   seconds,
   kg,
   programName,
@@ -58,7 +60,7 @@ export function ResultsScreen({
         </div>
         <div className="hud-box clip">
           <div className="hud-label">CLIPS</div>
-          <div className="hud-value">{score}</div>
+          <div className="hud-value">{score}/{totalClips}</div>
         </div>
         <div className="hud-box kg">
           <div className="hud-label">MAX KG</div>

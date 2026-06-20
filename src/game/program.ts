@@ -54,7 +54,7 @@ export const DEFAULT_PROGRAMS: Program[] = [
     builtIn: true,
     handMode: 'alternate',
     blocks: [
-      { workSeconds: 10, kilograms: 10, restSeconds: 5, repeat: 8 },
+      { workSeconds: 10, kilograms: 10, restSeconds: 10, repeat: 8 },
       { workSeconds: 10, kilograms: 15, restSeconds: 10, repeat: 8 },
       { workSeconds: 10, kilograms: 20, restSeconds: 10, repeat: 8 },
     ],

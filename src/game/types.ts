@@ -64,6 +64,8 @@ export interface World {
   status: GameState;
   // Clip score — incremented once per successful clip.
   clipScore: number;
+  // Total clippable anchors spawned this run (the denominator for the results CLIPS pill).
+  totalClips: number;
   best: number;
   seconds: number;
   gameStartTime: number;
