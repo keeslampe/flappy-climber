@@ -156,7 +156,7 @@ html, body, #root {
 .last-info { font-size: 17px; color: #FFF6E5; margin-bottom: 8px; letter-spacing: 1px; font-weight: 700; }
 .hint { font-size: 11px; color: #999; margin-top: 18px; text-align: center; line-height: 2; letter-spacing: 1px; }
 
-.seq-wrap { width: 100%; max-width: 320px; margin-top: 20px; margin-bottom: 28px; pointer-events: all; }
+.seq-wrap { width: 100%; max-width: 320px; margin-top: 52px; margin-bottom: 60px; pointer-events: all; }
 .seq-label { font-size: 10px; color: #1FD5C8; letter-spacing: 2px; text-transform: uppercase; text-align: center; margin-bottom: 6px; font-weight: 700; }
 .seq-input {
   width: 100%;
@@ -294,6 +294,7 @@ html, body, #root {
   align-items: center;
   justify-content: center;
 }
+.block-remove:disabled { opacity: 0.35; pointer-events: none; }
 .block-add {
   margin-top: 6px;
   background: transparent;
@@ -308,6 +309,54 @@ html, body, #root {
   cursor: pointer;
   pointer-events: all;
 }
+/* The two add buttons stack vertically, each full width. */
+.block-add-row { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+.block-add-row .block-add { margin-top: 0; width: 100%; }
+.block-add-progressive { color: #FF8A3D; border-color: #FF8A3D; }
+
+/* Progressive block — a dotted card holding a rising ladder of pulls + a closing rest. */
+.progressive-block {
+  margin-top: 10px;
+  border: 2px dashed #FF8A3D;
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.progressive-head { display: flex; align-items: center; justify-content: space-between; }
+.progressive-tag {
+  font-size: 10px;
+  color: #FF8A3D;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+.progressive-step-header,
+.progressive-step-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 30px;
+  gap: 6px;
+  align-items: center;
+}
+.progressive-step-header { padding: 0 2px; text-align: center; }
+.progressive-step-header span {
+  font-size: 10px;
+  color: #1FD5C8;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.progressive-add-rep { align-self: flex-start; padding: 7px 14px; }
+.progressive-rest { display: flex; align-items: center; gap: 8px; }
+.progressive-rest span {
+  font-size: 10px;
+  color: #1FD5C8;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.progressive-rest .block-input { width: 80px; }
 .editor-actions {
   display: flex;
   gap: 12px;

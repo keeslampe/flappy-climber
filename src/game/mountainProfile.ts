@@ -1,4 +1,5 @@
 import {
+  HEIGHT_SCALE_MAX,
   SCROLL_SPEED,
   WALL_FADE_UNITS,
   WALL_HEADROOM_PIXELS,
@@ -256,10 +257,15 @@ export function sampleWallCrest(
 
     // Crest height in kg: rolling peaks add variation that scales with the plateau
     // height, so it rises gradually with the start and tapers smoothly back down
-    // with the descent (continuous → no flicker), reaching as high as
-    // WALL_PEAK_CEILING_KG over the tallest pulls.
+    // with the descent (continuous → no flicker). Random peaks fill up to
+    // WALL_PEAK_CEILING_KG, but the crest never sits below the actual target (so tall
+    // pulls keep their full height instead of being capped) and can reach the top of
+    // the scale.
     const peakKg = noise * baseUnits;
-    const crestKg = Math.min(WALL_PEAK_CEILING_KG, baseUnits + peakKg);
+    const crestKg = Math.min(
+      HEIGHT_SCALE_MAX,
+      Math.max(baseUnits, Math.min(WALL_PEAK_CEILING_KG, baseUnits + peakKg)),
+    );
 
     // Fade the whole wall down to the ground line as the target vanishes: a 0kg
     // (rest) target shows no mountain — just the ground. Presence blends the crest.

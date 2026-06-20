@@ -95,6 +95,13 @@ export default function App() {
   const overlayShownAtRef = useRef(0);
   const [bestScore, setBestScore] = useState(() => loadStoredNumber(BEST_SCORE_KEY));
   const [maxKilograms, setMaxKilograms] = useState(() => loadStoredNumber(MAX_KILOGRAMS_KEY));
+  // Mirror the records in refs so a finishing run can read the values from *before* it
+  // gets folded in (recordRun runs before the results screen shows) to tell whether it
+  // actually set a new record.
+  const bestScoreRef = useRef(bestScore);
+  const maxKilogramsRef = useRef(maxKilograms);
+  useEffect(() => { bestScoreRef.current = bestScore; }, [bestScore]);
+  useEffect(() => { maxKilogramsRef.current = maxKilograms; }, [maxKilograms]);
   // True for a short window after the menu (re)appears — disables the menu buttons so
   // the tap that quit to the menu can't bleed through and leave a button stuck-pressed.
   const [menuLocked, setMenuLocked] = useState(false);
@@ -108,6 +115,8 @@ export default function App() {
       totalReps: number;
       sets: number;
       totalSets: number;
+      newBest: boolean;
+      newMaxKilograms: boolean;
     } | null
   >(null);
   // The program name in play, captured at start so the results overview is stable.
@@ -202,6 +211,8 @@ export default function App() {
       totalReps: world.totalReps,
       sets: world.currentSet,
       totalSets: world.totalSets,
+      newBest: world.clipScore > bestScoreRef.current,
+      newMaxKilograms: world.peakWeight > maxKilogramsRef.current,
     });
     recordRun(world.clipScore, world.peakWeight);
     setShowResults(false);
@@ -240,6 +251,8 @@ export default function App() {
       totalReps: world.totalReps,
       sets: world.currentSet,
       totalSets: world.totalSets,
+      newBest: world.clipScore > bestScoreRef.current,
+      newMaxKilograms: world.peakWeight > maxKilogramsRef.current,
     });
     recordRun(world.clipScore, world.peakWeight);
     setShowResults(true);
@@ -349,12 +362,13 @@ export default function App() {
           score={lastRun.score}
           seconds={lastRun.seconds}
           kg={lastRun.kg}
-          best={bestScore}
           programName={lastRun.programName}
           reps={lastRun.reps}
           totalReps={lastRun.totalReps}
           sets={lastRun.sets}
           totalSets={lastRun.totalSets}
+          newBest={lastRun.newBest}
+          newMaxKilograms={lastRun.newMaxKilograms}
           onClose={() => {
             setShowResults(false);
             setShowOverlay(true);

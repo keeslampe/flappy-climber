@@ -1,15 +1,36 @@
 import { HAND_SWITCH_REST_SECONDS } from './constants';
 import type { Hand, SeqEvent } from './types';
 
-// A program is an ordered list of blocks. Each block is "pull for workSeconds at
-// kilograms, then rest for restSeconds", performed repeat times. Built-in programs
-// ship with the app and are read-only; custom programs live in localStorage.
-export interface ProgramBlock {
+// A program is an ordered list of blocks. Built-in programs ship with the app and are
+// read-only; custom programs live in localStorage.
+//
+// A standard block is "pull for workSeconds at kilograms, then rest for restSeconds",
+// performed repeat times. `kind` is optional so older saves (which predate the field)
+// still load as standard blocks.
+export interface StandardBlock {
+  kind?: 'standard';
   workSeconds: number;
   kilograms: number; // 0..HEIGHT_SCALE_MAX (50)
   restSeconds: number;
   repeat: number;
 }
+
+// One pull within a progressive block.
+export interface ProgressiveStep {
+  workSeconds: number;
+  kilograms: number; // 0..HEIGHT_SCALE_MAX (50)
+}
+
+// A progressive block: a chain of pulls climbing higher and higher with no rest
+// between them — a mountain that grows so you have to climb ever higher — capped off
+// by a single rest at the end.
+export interface ProgressiveBlock {
+  kind: 'progressive';
+  steps: ProgressiveStep[];
+  restSeconds: number;
+}
+
+export type ProgramBlock = StandardBlock | ProgressiveBlock;
 
 // How the program assigns hands:
 //   none      — no hand switching (no pill, badge or cue)
@@ -62,6 +83,27 @@ export const DEFAULT_PROGRAMS: Program[] = [
       { workSeconds: 20, kilograms: 22, restSeconds: 30, repeat: 3 },
     ],
   },
+  {
+    id: 'builtin-progressive-mountain',
+    name: 'Progressive Mountain',
+    builtIn: true,
+    handMode: 'both',
+    blocks: [
+      {
+        kind: 'progressive',
+        steps: [
+          { workSeconds: 5, kilograms: 5 },
+          { workSeconds: 5, kilograms: 10 },
+          { workSeconds: 5, kilograms: 15 },
+          { workSeconds: 5, kilograms: 25 },
+          { workSeconds: 5, kilograms: 35 },
+          { workSeconds: 5, kilograms: 40 },
+          { workSeconds: 5, kilograms: 50 },
+        ],
+        restSeconds: 10,
+      },
+    ],
+  },
 ];
 
 // Old saves predate handMode — treat a missing value as 'none'.
@@ -88,22 +130,36 @@ function expandBlocks(
 ): SeqEvent[] {
   const events: SeqEvent[] = [];
   let pullIndex = 0;
+
+  // Emit one pull (rep), tagging it with rep/set numbers and a hand.
+  const pushPull = (workSeconds: number, kilograms: number, setNumber: number, hand: Hand | undefined) => {
+    counters.rep += 1;
+    events.push({ type: 'on', duration: workSeconds, height: kilograms, hand, repNumber: counters.rep, setNumber });
+  };
+
   for (const block of program.blocks) {
-    // Each block that actually has work is one set; the reps inside it share its number.
+    if (block.kind === 'progressive') {
+      // The growing mountain: a chain of ever-higher pulls with no rest between them,
+      // counted as a single set, finished off by one rest. Progressive steps don't
+      // alternate hands (the climb is one continuous effort) — they take the pass hand,
+      // which is a real hand only in 'both' mode.
+      const workingSteps = block.steps.filter((step) => step.workSeconds > 0);
+      if (workingSteps.length > 0) {
+        const setNumber = (counters.set += 1);
+        for (const step of workingSteps) pushPull(step.workSeconds, step.kilograms, setNumber, passHand);
+      }
+      if (block.restSeconds > 0) events.push({ type: 'rest', duration: block.restSeconds });
+      continue;
+    }
+
+    // Standard block: each block that actually has work is one set; the reps inside it
+    // share its number.
     const setNumber = block.workSeconds > 0 ? (counters.set += 1) : counters.set;
     for (let repetition = 0; repetition < block.repeat; repetition++) {
       if (block.workSeconds > 0) {
-        counters.rep += 1;
         const hand: Hand | undefined =
           mode === 'alternate' ? (pullIndex % 2 === 0 ? 'left' : 'right') : passHand;
-        events.push({
-          type: 'on',
-          duration: block.workSeconds,
-          height: block.kilograms,
-          hand,
-          repNumber: counters.rep,
-          setNumber,
-        });
+        pushPull(block.workSeconds, block.kilograms, setNumber, hand);
         pullIndex++;
       }
       if (block.restSeconds > 0) {
@@ -191,7 +247,11 @@ const HAND_MODE_LABEL: Record<HandMode, string> = {
 export function summarizeProgram(program: Program): string {
   if (program.blocks.length === 0) return 'empty';
   const blocks = program.blocks
-    .map((block) => `${block.workSeconds}s@${block.kilograms}kg x${block.repeat} · ${block.restSeconds}s rest`)
+    .map((block) =>
+      block.kind === 'progressive'
+        ? `↗ ${block.steps.map((step) => `${step.kilograms}kg`).join('→')} · ${block.restSeconds}s rest`
+        : `${block.workSeconds}s@${block.kilograms}kg x${block.repeat} · ${block.restSeconds}s rest`,
+    )
     .join(' · ');
   const mode = HAND_MODE_LABEL[handModeOf(program)];
   return mode ? `${blocks} · ${mode}` : blocks;

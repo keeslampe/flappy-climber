@@ -2,12 +2,14 @@ interface Props {
   score: number;
   seconds: number;
   kg: number;
-  best: number;
   programName: string;
   reps: number;
   totalReps: number;
   sets: number;
   totalSets: number;
+  // Whether this run set a new all-time record — only then is a celebratory line shown.
+  newBest: boolean;
+  newMaxKilograms: boolean;
   onClose: () => void;
 }
 
@@ -17,12 +19,13 @@ export function ResultsScreen({
   score,
   seconds,
   kg,
-  best,
   programName,
   reps,
   totalReps,
   sets,
   totalSets,
+  newBest,
+  newMaxKilograms,
   onClose,
 }: Props) {
   // REPS / SETS only mean something with a program (totalReps > 0) — match the in-game HUD.
@@ -63,7 +66,8 @@ export function ResultsScreen({
         </div>
       </div>
 
-      <div className="best">BEST: {best} clips</div>
+      {newBest && <div className="best">⭐ NEW BEST: {score} clips</div>}
+      {newMaxKilograms && <div className="best">⭐ NEW MAX: {kg} kg</div>}
 
       <button
         className="start-btn result-back"
