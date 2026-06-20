@@ -53,7 +53,7 @@ export function Overlay(props: Props) {
       <div className="sub">⛰ kees lampe · tindeq ⛰</div>
 
       <div className="last-info">
-        BEST: {bestScore} &nbsp; MAX: {maxKilograms}kg
+        BEST: {bestScore} clips &nbsp; MAX: {maxKilograms}kg
       </div>
 
       <div className="seq-wrap">

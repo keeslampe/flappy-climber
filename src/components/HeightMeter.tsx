@@ -11,8 +11,8 @@ interface Props {
 // beside them) so the bar can stay narrow. It starts just above the top tick (50 kg),
 // which the height scale keeps below the HUD pills.
 export function HeightMeter({ groundY }: Props) {
-  const panelX = 0;
-  const panelWidth = 24;
+  const panelX = 6;
+  const panelWidth = 30;
   const panelTop = Math.max(12, waistYForHeight(HEIGHT_SCALE_MAX, groundY) - 8);
   const panelBottom = groundY - 6;
   const railX = panelX + panelWidth / 2;

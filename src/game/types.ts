@@ -55,11 +55,15 @@ export type Hand = 'left' | 'right';
 export type SeqEvent =
   // switchTo on a rest = "2 seconds into this rest, switch the active hand to this value".
   | { type: 'rest'; duration: number; switchTo?: Hand }
-  | { type: 'on'; duration: number; height: number; hand?: Hand };
+  // repNumber / setNumber are 1-based positions within the whole expanded program:
+  // every pull is a rep, and each program block is a set. They drive the REPS / SETS
+  // HUD pills.
+  | { type: 'on'; duration: number; height: number; hand?: Hand; repNumber?: number; setNumber?: number };
 
 export interface World {
   status: GameState;
-  score: number;
+  // Clip score — incremented once per successful clip.
+  clipScore: number;
   best: number;
   seconds: number;
   gameStartTime: number;
@@ -91,6 +95,14 @@ export interface World {
   sequenceEventSpawned: boolean;
   sequenceTargetHeight: number;
   beamDisplayHeight: number;
+
+  // Rep / set progress for the HUD. currentRep / currentSet are the 1-based position of
+  // the pull in progress (or the most recently completed pull, during a rest); they hold
+  // at 0 before the first pull. totalReps / totalSets are the program's full counts.
+  currentRep: number;
+  currentSet: number;
+  totalReps: number;
+  totalSets: number;
 
   // Hand switching. currentHand is the hand the climber should be pulling with right
   // now (shown in the HUD pill + on the sprite); null when the program has no hand

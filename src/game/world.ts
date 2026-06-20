@@ -45,7 +45,7 @@ export function createInitialWorld(viewportHeight: number): World {
   const groundY = getGroundY(viewportHeight);
   return {
     status: 'idle',
-    score: 0,
+    clipScore: 0,
     best: 0,
     seconds: 0,
     gameStartTime: 0,
@@ -55,7 +55,7 @@ export function createInitialWorld(viewportHeight: number): World {
     groundOffset: 0,
     flashTimer: 0,
 
-    climber: { x: 90, y: groundY - 24, width: 30, height: 44, animationTime: 0 },
+    climber: { x: 72, y: groundY - 24, width: 30, height: 44, animationTime: 0 },
     climberMotion: 'none',
     heightHistoryKilograms: [],
     anchors: [] as Anchor[],
@@ -72,6 +72,11 @@ export function createInitialWorld(viewportHeight: number): World {
     sequenceEventSpawned: false,
     sequenceTargetHeight: 0,
     beamDisplayHeight: 0,
+
+    currentRep: 0,
+    currentSet: 0,
+    totalReps: 0,
+    totalSets: 0,
 
     currentHand: null,
     handSwitchCue: null,
@@ -95,7 +100,7 @@ export function createInitialWorld(viewportHeight: number): World {
 
 export function resetForNewGame(world: World, viewportHeight: number): void {
   const groundY = getGroundY(viewportHeight);
-  world.climber.x = 90;
+  world.climber.x = 72;
   world.climber.y = groundY - 24;
   world.climber.animationTime = 0;
   world.climberMotion = 'none';
@@ -104,7 +109,7 @@ export function resetForNewGame(world: World, viewportHeight: number): void {
   world.ropePoints.length = 0;
   world.particles.length = 0;
   world.scorePops.length = 0;
-  world.score = 0;
+  world.clipScore = 0;
   world.seconds = 0;
   world.gameStartTime = performance.now();
   world.weight = 0;
@@ -117,6 +122,10 @@ export function resetForNewGame(world: World, viewportHeight: number): void {
   world.sequenceEventSpawned = false;
   world.sequenceTargetHeight = 0;
   world.beamDisplayHeight = 0;
+  world.currentRep = 0;
+  world.currentSet = 0;
+  world.totalReps = 0;
+  world.totalSets = 0;
   world.currentHand = null;
   world.handSwitchCue = null;
   world.lastPullScroll = 0;

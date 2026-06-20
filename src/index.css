@@ -70,7 +70,10 @@ html, body, #root {
 .hud-label { font-size: 10px; letter-spacing: 0.18em; font-weight: 700; }
 .hud .hud-label { font-size: clamp(8px, 2.3vw, 10px); letter-spacing: 0.1em; }
 .hud-box.time .hud-label  { color: #FFD23F; }
+.hud-box.reps .hud-label  { color: #FFD23F; }
+.hud-box.sets .hud-label  { color: #FF8A3D; }
 .hud-box.score .hud-label { color: #1FD5C8; }
+.hud-box.clip .hud-label  { color: #1FD5C8; }
 .hud-box.kg .hud-label    { color: #FF3D8A; }
 .hud-value { font-size: 22px; color: #FFF6E5; font-weight: 800; letter-spacing: 1px; margin-top: 2px; line-height: 1; }
 .hud .hud-value { font-size: clamp(15px, 4.6vw, 22px); letter-spacing: 0; }
@@ -135,17 +138,18 @@ html, body, #root {
 .overlay.locked .tindeq-btn { pointer-events: none; }
 .best { font-size: 12px; color: #FFD23F; letter-spacing: 2px; margin-top: 6px; font-weight: 700; }
 
-/* Results overview — HUD-style pills (reuse .hud-box) kept in a single row */
+/* Results overview — HUD-style pills (reuse .hud-box). Wraps to a second row when a
+   program adds the REPS / SETS pills (up to 5 total). */
 .result-pills {
   display: flex;
   gap: 8px;
   justify-content: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   width: 100%;
   max-width: 360px;
   margin: 10px 0 16px;
 }
-.result-pills .hud-box { flex: 1 1 0; min-width: 0; padding: 8px 6px; }
+.result-pills .hud-box { flex: 1 1 90px; min-width: 0; padding: 8px 6px; }
 .result-pills .hud-label { font-size: clamp(8px, 2.6vw, 11px); letter-spacing: 0.08em; }
 .result-pills .hud-value { font-size: clamp(15px, 5vw, 22px); letter-spacing: 0; }
 .result-back { margin-top: 22px; padding: 16px 40px; }

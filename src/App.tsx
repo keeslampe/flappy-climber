@@ -99,7 +99,16 @@ export default function App() {
   // the tap that quit to the menu can't bleed through and leave a button stuck-pressed.
   const [menuLocked, setMenuLocked] = useState(false);
   const [lastRun, setLastRun] = useState<
-    { score: number; seconds: number; kg: number; programName: string } | null
+    {
+      score: number;
+      seconds: number;
+      kg: number;
+      programName: string;
+      reps: number;
+      totalReps: number;
+      sets: number;
+      totalSets: number;
+    } | null
   >(null);
   // The program name in play, captured at start so the results overview is stable.
   const lastProgramNameRef = useRef('');
@@ -142,9 +151,11 @@ export default function App() {
     const world = worldRef.current;
     resetForNewGame(world, logicalHeight);
     const program = programsStore.selectedProgram;
-    const { events, initialHand } = program
+    const { events, initialHand, totalReps, totalSets } = program
       ? expandProgramWithHands(program)
-      : { events: [] as SeqEvent[], initialHand: null };
+      : { events: [] as SeqEvent[], initialHand: null, totalReps: 0, totalSets: 0 };
+    world.totalReps = totalReps;
+    world.totalSets = totalSets;
     if (events.length > 0) {
       // Always begin with a 5 second rest, then run the program once (block repeats
       // are already baked in, so the intro rest happens only at the very start).
@@ -183,12 +194,16 @@ export default function App() {
     world.status = 'idle';
     setPaused(false);
     setLastRun({
-      score: world.score,
+      score: world.clipScore,
       seconds: world.seconds,
       kg: world.peakWeight,
       programName: lastProgramNameRef.current,
+      reps: world.currentRep,
+      totalReps: world.totalReps,
+      sets: world.currentSet,
+      totalSets: world.totalSets,
     });
-    recordRun(world.score, world.peakWeight);
+    recordRun(world.clipScore, world.peakWeight);
     setShowResults(false);
     setShowOverlay(true);
     overlayShownAtRef.current = performance.now();
@@ -217,12 +232,16 @@ export default function App() {
     world.status = 'idle';
     world.finishReached = false;
     setLastRun({
-      score: world.score,
+      score: world.clipScore,
       seconds: world.seconds,
       kg: world.peakWeight,
       programName: lastProgramNameRef.current,
+      reps: world.currentRep,
+      totalReps: world.totalReps,
+      sets: world.currentSet,
+      totalSets: world.totalSets,
     });
-    recordRun(world.score, world.peakWeight);
+    recordRun(world.clipScore, world.peakWeight);
     setShowResults(true);
   }, [recordRun]);
 
@@ -294,7 +313,15 @@ export default function App() {
         <HeightMeter world={world} groundY={groundY} />
       </svg>
 
-      <HeadsUpDisplay seconds={world.seconds} score={world.score} weight={world.weight} hand={world.currentHand} />
+      <HeadsUpDisplay
+        clipScore={world.clipScore}
+        currentRep={world.currentRep}
+        totalReps={world.totalReps}
+        currentSet={world.currentSet}
+        totalSets={world.totalSets}
+        weight={world.weight}
+        hand={world.currentHand}
+      />
 
       {showDebug && (
         <DebugPanel
@@ -324,6 +351,10 @@ export default function App() {
           kg={lastRun.kg}
           best={bestScore}
           programName={lastRun.programName}
+          reps={lastRun.reps}
+          totalReps={lastRun.totalReps}
+          sets={lastRun.sets}
+          totalSets={lastRun.totalSets}
           onClose={() => {
             setShowResults(false);
             setShowOverlay(true);

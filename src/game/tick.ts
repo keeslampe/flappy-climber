@@ -165,7 +165,7 @@ export function tickWorld(world: World, opts: TickOpts): void {
     if (withinColumn) {
       if (Math.abs(climberWaistY - anchor.waistY) <= ANCHOR_CLIP_HEIGHT_TOLERANCE) {
         anchor.state = 'hit';
-        world.score++;
+        world.clipScore++;
         // No "CLIP!" pop for rest/ground clips (target height 0) — only real pulls.
         if (anchor.heightMeters > 0) {
           world.scorePops.push({
@@ -223,6 +223,13 @@ function tickSequence(world: World, viewportHeight: number): void {
   const currentEvent = world.sequenceProgram[world.sequenceIndex];
   world.sequenceTargetHeight = currentEvent && currentEvent.type === 'on' ? currentEvent.height : 0;
   world.beamDisplayHeight += (world.sequenceTargetHeight - world.beamDisplayHeight) * 0.04;
+
+  // Surface the current pull's rep/set on the HUD. During a rest we hold the last pull's
+  // numbers (the rep just completed) rather than resetting to 0.
+  if (currentEvent && currentEvent.type === 'on') {
+    world.currentRep = currentEvent.repNumber ?? world.currentRep;
+    world.currentSet = currentEvent.setNumber ?? world.currentSet;
+  }
 
   // Fire the hand-switch cue a fixed delay into the rest that precedes a hand change.
   // The elapsed time is read off the scroll clock (same one events advance on). The

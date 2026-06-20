@@ -69,18 +69,41 @@ function handModeOf(program: Program): HandMode {
   return program.handMode ?? 'none';
 }
 
+// Running rep/set counters threaded across expansion passes so the numbering is
+// continuous (e.g. it keeps climbing across the two passes of 'both' mode).
+interface ExpansionCounters {
+  rep: number;
+  set: number;
+}
+
 // Expand one pass of the program's blocks into pull/rest events. In 'alternate' mode
 // the hand flips on every work rep across the whole program; otherwise every pull gets
-// passHand (which is undefined in 'none' mode).
-function expandBlocks(program: Program, mode: HandMode, passHand: Hand | undefined): SeqEvent[] {
+// passHand (which is undefined in 'none' mode). Each block with work is one set; every
+// pull is one rep — both tagged onto the 'on' events for the HUD.
+function expandBlocks(
+  program: Program,
+  mode: HandMode,
+  passHand: Hand | undefined,
+  counters: ExpansionCounters,
+): SeqEvent[] {
   const events: SeqEvent[] = [];
   let pullIndex = 0;
   for (const block of program.blocks) {
+    // Each block that actually has work is one set; the reps inside it share its number.
+    const setNumber = block.workSeconds > 0 ? (counters.set += 1) : counters.set;
     for (let repetition = 0; repetition < block.repeat; repetition++) {
       if (block.workSeconds > 0) {
+        counters.rep += 1;
         const hand: Hand | undefined =
           mode === 'alternate' ? (pullIndex % 2 === 0 ? 'left' : 'right') : passHand;
-        events.push({ type: 'on', duration: block.workSeconds, height: block.kilograms, hand });
+        events.push({
+          type: 'on',
+          duration: block.workSeconds,
+          height: block.kilograms,
+          hand,
+          repNumber: counters.rep,
+          setNumber,
+        });
         pullIndex++;
       }
       if (block.restSeconds > 0) {
@@ -97,14 +120,22 @@ function expandBlocks(program: Program, mode: HandMode, passHand: Hand | undefin
 export function expandProgramWithHands(program: Program): {
   events: SeqEvent[];
   initialHand: Hand | null;
+  totalReps: number;
+  totalSets: number;
 } {
   const mode = handModeOf(program);
 
+  // 'both' runs the whole program once per hand, so the rep/set numbering continues
+  // across the two passes (shared counters).
+  const counters: ExpansionCounters = { rep: 0, set: 0 };
   let events: SeqEvent[];
   if (mode === 'both') {
-    events = [...expandBlocks(program, mode, 'left'), ...expandBlocks(program, mode, 'right')];
+    events = [
+      ...expandBlocks(program, mode, 'left', counters),
+      ...expandBlocks(program, mode, 'right', counters),
+    ];
   } else {
-    events = expandBlocks(program, mode, undefined);
+    events = expandBlocks(program, mode, undefined, counters);
   }
 
   // Normalize hand switches: every place where consecutive pulls use different hands
@@ -138,7 +169,7 @@ export function expandProgramWithHands(program: Program): {
     }
   }
 
-  return { events: normalized, initialHand };
+  return { events: normalized, initialHand, totalReps: counters.rep, totalSets: counters.set };
 }
 
 function findNextPull(events: SeqEvent[], from: number): Hand | undefined {

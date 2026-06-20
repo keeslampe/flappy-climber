@@ -1,25 +1,44 @@
 import type { Hand } from '../game/types';
 
 interface Props {
-  seconds: number;
-  score: number;
+  clipScore: number;
+  currentRep: number;
+  totalReps: number;
+  currentSet: number;
+  totalSets: number;
   weight: number;
   hand: Hand | null;
 }
 
-export function HeadsUpDisplay({ seconds, score, weight, hand }: Props) {
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds % 60;
-  const timeStr = `${minutes}:${remainingSeconds < 10 ? '0' : ''}${remainingSeconds}`;
+export function HeadsUpDisplay({
+  clipScore,
+  currentRep,
+  totalReps,
+  currentSet,
+  totalSets,
+  weight,
+  hand,
+}: Props) {
+  // REPS / SETS only mean something with a program loaded (totalReps > 0); free play
+  // has no structure, so those pills are hidden then.
+  const hasProgram = totalReps > 0;
   return (
     <div className="hud">
-      <div className="hud-box time">
-        <div className="hud-label">TIME</div>
-        <div className="hud-value">{timeStr}</div>
-      </div>
-      <div className="hud-box score">
-        <div className="hud-label">SCORE</div>
-        <div className="hud-value">{score}</div>
+      {hasProgram && (
+        <>
+          <div className="hud-box reps">
+            <div className="hud-label">REPS</div>
+            <div className="hud-value">{currentRep}/{totalReps}</div>
+          </div>
+          <div className="hud-box sets">
+            <div className="hud-label">SETS</div>
+            <div className="hud-value">{currentSet}/{totalSets}</div>
+          </div>
+        </>
+      )}
+      <div className="hud-box clip">
+        <div className="hud-label">CLIPS</div>
+        <div className="hud-value">{clipScore}</div>
       </div>
       <div className="hud-box kg">
         <div className="hud-label">KG</div>
